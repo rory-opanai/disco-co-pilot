@@ -14,7 +14,7 @@ export async function POST(req: Request) {
       if (token !== process.env.APP_TOKEN) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
     }
     const body = await req.json();
-    const { lastUtterance, checklist } = body || {};
+    const { lastUtterance, checklist, goal } = body || {};
     if (!lastUtterance) return NextResponse.json({ error: "lastUtterance required" }, { status: 400 });
 
     const kb = await searchPlaybooks(lastUtterance, 5);
@@ -26,6 +26,7 @@ Rules:
 - Output strict JSON with keys: question, grounded_in, checklist_category, confidence (0..1).`;
 
     const userText = `Last customer comment: ${lastUtterance}
+Conversation goal (optional): ${goal || 'n/a'}
 Checklist status: ${JSON.stringify(checklist || {})}
 Retrieved playbooks:
 ${kb.map((k) => `Title: ${k.title}\n${k.content}`).join("\n---\n")}`;
