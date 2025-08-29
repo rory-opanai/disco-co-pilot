@@ -27,6 +27,21 @@ export class RealtimeClient {
         this.emit(evt);
       } catch { /* ignore */ }
     };
+    dc.onopen = () => {
+      // Configure the session for live transcription with server-side VAD
+      const sessionUpdate = {
+        type: "session.update",
+        session: {
+          modalities: ["text"],
+          turn_detection: { type: "server_vad", threshold: 0.5, prefix_padding_ms: 300, silence_duration_ms: 500 },
+          instructions: "You are a live transcriber. For each user speech turn, output only the verbatim transcript text as it is spoken, no extra commentary.",
+          input_audio_transcription: { model: (process.env.NEXT_PUBLIC_TRANSCRIBE_MODEL || "gpt-4o-mini-transcribe") }
+        }
+      };
+      try { dc.send(JSON.stringify(sessionUpdate)); } catch {}
+      // Kick off first response cycle; subsequent cycles will be VAD-driven
+      try { dc.send(JSON.stringify({ type: "response.create" })); } catch {}
+    };
 
     // Mic capture
     const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
@@ -40,7 +55,8 @@ export class RealtimeClient {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
-        "Content-Type": "application/sdp"
+        "Content-Type": "application/sdp",
+        "OpenAI-Beta": "realtime=v1"
       },
       body: offer.sdp
     });
@@ -54,4 +70,3 @@ export class RealtimeClient {
     try { this.pc?.close(); } catch {}
   }
 }
-

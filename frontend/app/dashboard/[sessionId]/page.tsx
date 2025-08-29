@@ -11,14 +11,20 @@ export default function DashboardPage() {
 
   useEffect(() => {
     const load = async () => {
-      setLoading(true);
-      const res = await fetch(`/api/postcall/${sessionId}`);
-      const json = await res.json();
-      setData(json);
-      setLoading(false);
+      try {
+        setLoading(true);
+        const res = await fetch(`/api/postcall/${sessionId}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const json = await res.json();
+        setData(json);
+      } catch (e) {
+        setData({ transcript: null, summary: null, error: String(e) });
+      } finally {
+        setLoading(false);
+      }
     };
     load();
-  }, [sessionId, backend]);
+  }, [sessionId]);
 
   const upload = async (file: File) => {
     const form = new FormData();
