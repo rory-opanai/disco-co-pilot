@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { randomUUID } from "crypto";
 import { getOpenAI, RESPONSES_MODEL } from "../../../lib/server/openai";
 import { searchPlaybooks } from "../../../lib/server/vector";
 
@@ -6,6 +7,12 @@ export const runtime = "nodejs";
 
 export async function POST(req: Request) {
   try {
+    const rid = randomUUID();
+    const t0 = Date.now();
+    if (process.env.APP_TOKEN) {
+      const token = (req.headers.get("x-auth-token") || req.headers.get("X-Auth-Token") || "").trim();
+      if (token !== process.env.APP_TOKEN) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    }
     const body = await req.json();
     const { lastUtterance, checklist } = body || {};
     if (!lastUtterance) return NextResponse.json({ error: "lastUtterance required" }, { status: 400 });
@@ -53,7 +60,9 @@ ${kb.map((k) => `Title: ${k.title}\n${k.content}`).join("\n---\n")}`;
       checklist_category: parsed.checklist_category || "General",
       confidence: typeof parsed.confidence === "number" ? parsed.confidence : 0.7
     };
-    return NextResponse.json({ nbq });
+    const ms = Date.now() - t0;
+    console.log(`[nbq] rid=${rid} ms=${ms} utter_len=${lastUtterance.length}`);
+    return NextResponse.json({ nbq, rid, ms });
   } catch (e: any) {
     return NextResponse.json({ error: e.message || "internal" }, { status: 500 });
   }

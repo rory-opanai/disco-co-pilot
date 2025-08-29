@@ -130,7 +130,7 @@ export default function DashboardPage() {
       </section>
       <section>
         <h2 className="font-semibold mb-2">Transcript</h2>
-        <pre className="border rounded p-3 overflow-auto max-h-96 whitespace-pre-wrap">{transcript || "No transcript yet."}</pre>
+        <pre className="border rounded p-3 overflow-auto max-h-96 whitespace-pre-wrap">{(data?.transcript as string) || "No transcript yet."}</pre>
       </section>
     </div>
   );

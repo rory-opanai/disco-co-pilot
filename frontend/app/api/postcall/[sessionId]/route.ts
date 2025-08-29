@@ -1,10 +1,16 @@
 import { NextResponse } from "next/server";
+import { randomUUID } from "crypto";
 import { getOpenAI, RESPONSES_MODEL, TRANSCRIBE_MODEL } from "../../../../lib/server/openai";
 import { query } from "../../../../lib/server/db";
 
 export const runtime = "nodejs";
 
 export async function GET(_req: Request, { params }: { params: { sessionId: string } }) {
+  if (process.env.APP_TOKEN) {
+    // In GET, Next.js Request headers are available on _req, keep same header name convention
+    const token = (typeof _req !== 'undefined' ? ((_req as any).headers?.get?.("x-auth-token") || (_req as any).headers?.get?.("X-Auth-Token")) : "") || "";
+    if ((token as string).trim() !== process.env.APP_TOKEN) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
   const { sessionId } = params;
   const { rows: t } = await query<{ content: string }>(`SELECT content FROM transcripts WHERE session_id=$1 ORDER BY created_at DESC LIMIT 1`, [sessionId]);
   const { rows: s } = await query<{ payload: any }>(`SELECT payload FROM summary_packs WHERE session_id=$1 ORDER BY created_at DESC LIMIT 1`, [sessionId]);
@@ -13,6 +19,12 @@ export async function GET(_req: Request, { params }: { params: { sessionId: stri
 
 export async function POST(req: Request, { params }: { params: { sessionId: string } }) {
   try {
+    const rid = randomUUID();
+    const t0 = Date.now();
+    if (process.env.APP_TOKEN) {
+      const token = (req.headers.get("x-auth-token") || req.headers.get("X-Auth-Token") || "").trim();
+      if (token !== process.env.APP_TOKEN) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    }
     const { sessionId } = params;
     const form = await req.formData();
     const file = form.get("audio") as File | null;
@@ -56,7 +68,9 @@ export async function POST(req: Request, { params }: { params: { sessionId: stri
     if (pack.discovery_depth_score) {
       await query(`INSERT INTO depth_scores(session_id, percentage, interpretation) VALUES($1, $2, $3)`, [sessionId, pack.discovery_depth_score.percentage, pack.discovery_depth_score.interpretation]);
     }
-    return NextResponse.json({ sessionId, transcriptId: tRows[0]?.id, summary: pack });
+    const ms = Date.now() - t0;
+    console.log(`[postcall] rid=${rid} ms=${ms} transcript_chars=${transcript.length}`);
+    return NextResponse.json({ sessionId, transcriptId: tRows[0]?.id, summary: pack, rid, ms });
   } catch (e: any) {
     return NextResponse.json({ error: e.message || "internal" }, { status: 500 });
   }
