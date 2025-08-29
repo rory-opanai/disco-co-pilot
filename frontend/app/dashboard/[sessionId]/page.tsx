@@ -1,0 +1,118 @@
+"use client";
+export const dynamic = "force-dynamic";
+import React, { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
+
+export default function DashboardPage() {
+  const { sessionId } = useParams<{ sessionId: string }>();
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+  const backend = ""; // same origin
+
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      const res = await fetch(`/api/postcall/${sessionId}`);
+      const json = await res.json();
+      setData(json);
+      setLoading(false);
+    };
+    load();
+  }, [sessionId, backend]);
+
+  const upload = async (file: File) => {
+    const form = new FormData();
+    form.append("audio", file);
+    const res = await fetch(`/api/postcall/${sessionId}`, { method: "POST", body: form });
+    const json = await res.json();
+    setData(json);
+  };
+
+  if (loading) return <div>Loading...</div>;
+  if (!data) return (
+    <div className="space-y-4">
+      <div className="text-slate-700">No data yet for this session.</div>
+      <label className="inline-block">Upload call audio
+        <input type="file" accept="audio/*" className="block mt-1" onChange={(e) => e.target.files && upload(e.target.files[0])} />
+      </label>
+    </div>
+  );
+
+  const { transcript, summary } = data;
+  return (
+    <div className="space-y-6">
+      <h1 className="text-2xl font-bold">Post-Call Summary</h1>
+      <section>
+        <h2 className="font-semibold mb-2">Discovery Depth Score</h2>
+        <div className="p-4 border rounded">
+          {summary?.discovery_depth_score ? (
+            <div>
+              <div className="text-4xl font-bold">{summary.discovery_depth_score.percentage}%</div>
+              <div className="text-slate-600">{summary.discovery_depth_score.interpretation}</div>
+            </div>
+          ) : (
+            <div className="text-slate-600">Not available</div>
+          )}
+        </div>
+      </section>
+      <section>
+        <h2 className="font-semibold mb-2">Coverage</h2>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+          {summary?.coverage_table?.map((c: any, i: number) => (
+            <div key={i} className="border rounded p-2">
+              <div className="font-medium">{c.category}</div>
+              <div className="text-sm">Status: {c.status}</div>
+            </div>
+          )) || <div className="text-slate-500">No coverage computed</div>}
+        </div>
+      </section>
+      <section>
+        <h2 className="font-semibold mb-2">Missed Questions & Risks</h2>
+        <div className="grid md:grid-cols-2 gap-4">
+          <div className="border rounded p-3">
+            <div className="font-medium mb-2">Missed Questions</div>
+            <ul className="list-disc ml-5 space-y-1">
+              {summary?.missed_questions?.map((q: any, i: number) => (
+                <li key={i}>{q.question} <span className="text-xs text-slate-500">({q.expected_category})</span></li>
+              )) || <div className="text-slate-500">None</div>}
+            </ul>
+          </div>
+          <div className="border rounded p-3">
+            <div className="font-medium mb-2">Risks & Blockers</div>
+            <ul className="list-disc ml-5 space-y-1">
+              {summary?.risks_and_blockers?.map((r: any, i: number) => (
+                <li key={i}>{r.description} <span className="text-xs text-slate-500">({r.impact_level})</span></li>
+              )) || <div className="text-slate-500">None</div>}
+            </ul>
+          </div>
+        </div>
+      </section>
+      <section>
+        <h2 className="font-semibold mb-2">Recommended Agenda</h2>
+        <ol className="list-decimal ml-5 space-y-1">
+          {summary?.recommended_agenda?.map((a: any, i: number) => (
+            <li key={i}>{a.agenda_item} – <span className="text-slate-600">{a.objective}</span></li>
+          )) || <div className="text-slate-500">None</div>}
+        </ol>
+      </section>
+      <section>
+        <h2 className="font-semibold mb-2">Draft Follow-up Email</h2>
+        <div className="border rounded p-3 space-y-2">
+          <div className="font-medium">{summary?.follow_up_email?.subject || "No subject"}</div>
+          <textarea className="w-full border rounded p-2 h-40" defaultValue={summary?.follow_up_email?.body || ""} />
+          <div className="text-sm text-slate-500">Action Items: {summary?.follow_up_email?.action_items?.join(", ") || "None"}</div>
+        </div>
+      </section>
+      <section>
+        <h2 className="font-semibold mb-2">Generate Summary</h2>
+        <label className="inline-block">Upload call audio
+          <input type="file" accept="audio/*" className="block mt-1" onChange={(e) => e.target.files && upload(e.target.files[0])} />
+        </label>
+      </section>
+      <section>
+        <h2 className="font-semibold mb-2">Transcript</h2>
+        <pre className="border rounded p-3 overflow-auto max-h-96 whitespace-pre-wrap">{transcript || "No transcript yet."}</pre>
+      </section>
+    </div>
+  );
+}
