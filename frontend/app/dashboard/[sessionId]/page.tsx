@@ -1,10 +1,11 @@
 "use client";
 export const dynamic = "force-dynamic";
 import React, { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 
 export default function DashboardPage() {
   const { sessionId } = useParams<{ sessionId: string }>();
+  const router = useRouter();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const backend = ""; // same origin
@@ -47,7 +48,19 @@ export default function DashboardPage() {
   const { transcript, summary } = data;
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Post-Call Summary</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold">Post-Call Summary</h1>
+        <button
+          onClick={() => {
+            const newId = `sess_${Date.now()}`;
+            router.push(`/call?sessionId=${newId}`);
+          }}
+          className="bg-slate-800 text-white px-3 py-2 rounded"
+          aria-label="Start a new call session"
+        >
+          Start New
+        </button>
+      </div>
       <section>
         <h2 className="font-semibold mb-2">Discovery Depth Score</h2>
         <div className="p-4 border rounded">
