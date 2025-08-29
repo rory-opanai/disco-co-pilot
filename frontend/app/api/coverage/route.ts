@@ -31,20 +31,27 @@ export async function POST(req: Request) {
     const { transcriptWindow } = body || {};
     if (!transcriptWindow) return NextResponse.json({ error: "transcriptWindow required" }, { status: 400 });
 
-    const sys = `Classify discovery coverage for these categories. For each category, set status to one of: known, partial, unknown. Provide evidence as brief snippets from transcript.`;
-    const user = `Transcript window:\n${transcriptWindow}`;
+    const sys = `Classify discovery coverage for the categories below. Output JSON exactly matching the schema.`;
+    const user = `Transcript window:\n${transcriptWindow}\n\nCategories: ${CATS.join(", ")}`;
     const schema = {
-      type: "array",
-      items: {
-        type: "object",
-        additionalProperties: false,
-        properties: {
-          category: { type: "string", enum: CATS },
-          status: { type: "string", enum: ["known", "partial", "unknown"] },
-          evidence: { type: "array", items: { type: "string" } }
-        },
-        required: ["category", "status", "evidence"]
-      }
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        coverage: {
+          type: "array",
+          items: {
+            type: "object",
+            additionalProperties: false,
+            properties: {
+              category: { type: "string", enum: CATS },
+              status: { type: "string", enum: ["known", "partial", "unknown"] },
+              evidence: { type: "array", items: { type: "string" } }
+            },
+            required: ["category", "status", "evidence"]
+          }
+        }
+      },
+      required: ["coverage"]
     } as const;
 
     const openai = getOpenAI();
@@ -54,10 +61,11 @@ export async function POST(req: Request) {
         { role: "system", content: sys },
         { role: "user", content: user }
       ],
-      text: { format: { type: "json_schema", name: "coverage", schema, strict: true } }
+      text: { format: { type: "json_schema", json_schema: { name: "coverage", schema, strict: true } } }
     });
     const text = resp.output_text?.trim();
-    const coverage = text ? JSON.parse(text) : [];
+    const parsed = text ? JSON.parse(text) : { coverage: [] };
+    const coverage = Array.isArray(parsed.coverage) ? parsed.coverage : [];
     const ms = Date.now() - t0;
     console.log(`[coverage] rid=${rid} ms=${ms} len=${transcriptWindow.length}`);
     return NextResponse.json({ coverage, rid, ms });
