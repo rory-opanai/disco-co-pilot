@@ -39,7 +39,7 @@ Local Dev (no Docker)
 4) `npm install && npm run dev` then open http://localhost:3000
 
 Using The App
-- Start a session on the homepage (optional custom session ID).
+- Start a session on the homepage by clicking "Start Call" (the app generates a session ID automatically).
 - On the call screen, the browser requests mic permission; it connects via WebRTC directly to OpenAI Realtime using a short‑lived token minted by `/api/realtime/ephemeral`.
 - You’ll see:
   - Live transcript feed
