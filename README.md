@@ -22,7 +22,7 @@ Vercel Setup
 1) Create a Vercel project (Framework Preset: Next.js; Root Directory: `frontend`).
 2) Set Environment Variables in Vercel (Project Settings → Environment Variables):
    - `OPENAI_API_KEY` (Required)
-   - `DATABASE_URL` (Vercel Postgres/Neon connection string)
+   - One of: `DATABASE_URL` (recommended) or `POSTGRES_URL` / `POSTGRES_URL_NON_POOLING` (from Vercel Postgres integration)
    - Optional: `REALTIME_MODEL`, `RESPONSES_MODEL`, `TRANSCRIBE_MODEL`, `EMBEDDING_MODEL`, `NEXT_PUBLIC_REALTIME_MODEL`
 3) Apply DB migrations to your Postgres (run locally with psql or any SQL client):
    - `db/migrations/0001_init.sql`
@@ -34,7 +34,7 @@ Vercel Setup
 
 Local Dev (no Docker)
 1) Provision Postgres 16 with `pgvector` locally OR use Vercel Postgres/Neon.
-2) Create `frontend/.env.local` using `frontend/.env.local.example` (set `OPENAI_API_KEY`, `DATABASE_URL`).
+2) Create `frontend/.env.local` using `frontend/.env.local.example` (set `OPENAI_API_KEY`, and `DATABASE_URL` or `POSTGRES_URL`).
 3) Run migrations manually (psql) using files in `db/migrations/`.
 4) `npm install && npm run dev` then open http://localhost:3000
 

@@ -1,40 +1,30 @@
 {
   "pages": {
-    "/_not-found/page": [
-      "static/chunks/webpack-1e82457347a9eda9.js",
-      "static/chunks/618f8807-729c54a9d588c851.js",
-      "static/chunks/364-f349c741d384594c.js",
-      "static/chunks/main-app-540751fec3266a17.js",
-      "static/chunks/app/_not-found/page-37cf2c656a40e216.js"
+    "/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/page.js"
     ],
     "/layout": [
-      "static/chunks/webpack-1e82457347a9eda9.js",
-      "static/chunks/618f8807-729c54a9d588c851.js",
-      "static/chunks/364-f349c741d384594c.js",
-      "static/chunks/main-app-540751fec3266a17.js",
-      "static/css/b548fda156891b48.css",
-      "static/chunks/app/layout-bc2e089224cafc23.js"
-    ],
-    "/page": [
-      "static/chunks/webpack-1e82457347a9eda9.js",
-      "static/chunks/618f8807-729c54a9d588c851.js",
-      "static/chunks/364-f349c741d384594c.js",
-      "static/chunks/main-app-540751fec3266a17.js",
-      "static/chunks/app/page-9454c1b0235d7e1c.js"
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/css/app/layout.css",
+      "static/chunks/app/layout.js"
     ],
     "/call/page": [
-      "static/chunks/webpack-1e82457347a9eda9.js",
-      "static/chunks/618f8807-729c54a9d588c851.js",
-      "static/chunks/364-f349c741d384594c.js",
-      "static/chunks/main-app-540751fec3266a17.js",
-      "static/chunks/app/call/page-5e75c66d7449e15c.js"
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/call/page.js"
     ],
     "/dashboard/[sessionId]/page": [
-      "static/chunks/webpack-1e82457347a9eda9.js",
-      "static/chunks/618f8807-729c54a9d588c851.js",
-      "static/chunks/364-f349c741d384594c.js",
-      "static/chunks/main-app-540751fec3266a17.js",
-      "static/chunks/app/dashboard/[sessionId]/page-9e4e604f2f66f0b7.js"
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/dashboard/[sessionId]/page.js"
+    ],
+    "/_not-found/page": [
+      "static/chunks/webpack.js",
+      "static/chunks/main-app.js",
+      "static/chunks/app/_not-found/page.js"
     ]
   }
 }
