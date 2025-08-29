@@ -4,7 +4,6 @@ import React, { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Overlay from "../../components/Overlay";
 import { RealtimeClient } from "../../lib/realtimeClient";
-import { getTextDelta, isResponseDone } from "../../lib/realtimeEventUtils";
 import DebugPanel from "../../components/DebugPanel";
 
 function CallInner() {
@@ -37,46 +36,7 @@ function CallInner() {
         if (next.length > 200) next.shift();
         return next;
       });
-      // Streamed transcript text chunks (handle both legacy and current event names)
-      const text = getTextDelta(evt) || "";
-      if (text) {
-        if (text.trim()) {
-          setTranscript((t) => [...t, { speaker: "Customer", text, timestamp: new Date().toISOString() }]);
-        }
-      }
-      // Response completion (handle both legacy and current event names)
-      if (isResponseDone(evt)) {
-        // Throttle downstream coverage/NBQ calls to reduce cost and jitter
-        const now = Date.now();
-        if (inFlightRef.current || now - lastReqTsRef.current < 1500) {
-          return;
-        }
-        inFlightRef.current = true;
-        const window = tRef.current.slice(-40).map(t => t.text).join(" ");
-        if (window) {
-          try {
-            const lastUtter = window.split(/\n|\.\s/).slice(-1)[0] || window;
-            const [cov, nbqRes] = await Promise.all([
-              fetch("/api/coverage", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ transcriptWindow: window }) }).then(r => r.json()),
-              fetch("/api/nbq", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ lastUtterance: lastUtter, checklist: cRef.current, goal: goalRef.current }) }).then(r => r.json())
-            ]);
-            if (Array.isArray(cov.coverage)) {
-              const next: Record<string, string> = { ...cRef.current };
-              for (const c of cov.coverage) next[c.category] = c.status;
-              setCoverage(next);
-            }
-            if (nbqRes.nbq) setNbq(nbqRes.nbq);
-            setErrorMsg(null);
-          } catch (e: any) {
-            setErrorMsg(e?.message || "Failed to compute coverage/NBQ");
-          } finally {
-            lastReqTsRef.current = Date.now();
-            inFlightRef.current = false;
-          }
-        }
-        // Immediately request next response to keep turns flowing
-        setTimeout(() => rc.createResponse(), 200);
-      }
+      // Ignore assistant response events entirely to avoid echo/self-transcription.
 
       // Commit final transcript for each user speech turn
       if (evt.type === "conversation.item.input_audio_transcription.completed") {

@@ -57,7 +57,7 @@ export async function POST(req: Request, { params }: { params: { sessionId: stri
     const resp = await (openai.responses.create as any)({
       model: RESPONSES_MODEL,
       input: [ { role: "system", content: sys }, { role: "user", content: user } ],
-      response_format: { type: "json_schema", json_schema: { name: "summary_pack", schema, strict: true } }
+      text: { format: { type: "json_schema", json_schema: { name: "summary_pack", schema, strict: true } } }
     });
     const jsonText = resp.output_text?.trim();
     const pack = jsonText ? JSON.parse(jsonText) : { coverage_table: null, missed_questions: null, risks_and_blockers: null, recommended_agenda: null, follow_up_email: null, demo_plan_suggestions: null, discovery_depth_score: null, missing_reason: "No output" };

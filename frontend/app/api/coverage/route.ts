@@ -53,7 +53,7 @@ export async function POST(req: Request) {
         { role: "system", content: sys },
         { role: "user", content: user }
       ],
-      response_format: { type: "json_schema", json_schema: { name: "coverage", schema, strict: true } }
+      text: { format: { type: "json_schema", json_schema: { name: "coverage", schema, strict: true } } }
     });
     const text = resp.output_text?.trim();
     const coverage = text ? JSON.parse(text) : [];
