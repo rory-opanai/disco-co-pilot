@@ -17,7 +17,13 @@ export async function POST(req: Request) {
     const { lastUtterance, checklist, goal } = body || {};
     if (!lastUtterance) return NextResponse.json({ error: "lastUtterance required" }, { status: 400 });
 
-    const kb = await searchPlaybooks(lastUtterance, 5);
+    let kb: any[] = [];
+    try {
+      kb = await searchPlaybooks(lastUtterance, 5);
+    } catch (err: any) {
+      console.warn(`[nbq] playbook search failed: ${err?.message || err}`);
+      kb = [];
+    }
     const sys = `You are a discovery co-pilot. Propose ONE next best question (NBQ) to advance discovery with B2B customers.
 Rules:
 - Be concise, single sentence.
@@ -49,7 +55,7 @@ ${kb.map((k) => `Title: ${k.title}\n${k.content}`).join("\n---\n")}`;
         { role: "system", content: sys },
         { role: "user", content: userText }
       ],
-      text: { format: { type: "json_schema", json_schema: { name: "nbq", schema, strict: true } } }
+      text: { format: { type: "json_schema", name: "nbq", schema, strict: true } }
     });
     const text = resp.output_text?.trim();
     if (!text) return NextResponse.json({ nbq: null });
