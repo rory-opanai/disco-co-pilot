@@ -4,6 +4,7 @@ import React, { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Overlay from "../../components/Overlay";
 import { RealtimeClient } from "../../lib/realtimeClient";
+import DebugPanel from "../../components/DebugPanel";
 
 function CallInner() {
   const sp = useSearchParams();
@@ -17,10 +18,18 @@ function CallInner() {
   const cRef = useRef(coverage);
   useEffect(() => { tRef.current = transcript; }, [transcript]);
   useEffect(() => { cRef.current = coverage; }, [coverage]);
+  const [debugOpen, setDebugOpen] = useState(false);
+  const [debugEvents, setDebugEvents] = useState<{ t: string; type?: string; data: any }[]>([]);
 
   useEffect(() => {
     const rc = new RealtimeClient();
     rc.on(async (evt) => {
+      // Capture debug events (last 200)
+      setDebugEvents((arr) => {
+        const next = [...arr, { t: new Date().toISOString(), type: evt?.type, data: evt }];
+        if (next.length > 200) next.shift();
+        return next;
+      });
       if (evt.type === "response.output_text.delta") {
         const text: string = evt.delta || "";
         if (text.trim()) {
@@ -42,6 +51,8 @@ function CallInner() {
             if (nbqRes.nbq) setNbq(nbqRes.nbq);
           } catch {}
         }
+        // Immediately request next response to keep turns flowing
+        setTimeout(() => rc.createResponse(), 200);
       }
     });
     rc.start().then(() => setConnected(true)).catch(() => setConnected(false));
@@ -55,6 +66,7 @@ function CallInner() {
         <button onClick={() => router.push(`/dashboard/${sessionId}`)} className="bg-slate-800 text-white px-3 py-2 rounded">End & View Summary</button>
       </div>
       <Overlay sessionId={sessionId} connected={connected} transcript={transcript} coverage={coverage} nbq={nbq} onNbqAction={(action) => setNbq(null)} />
+      <DebugPanel open={debugOpen} onToggle={() => setDebugOpen((v) => !v)} events={debugEvents} onClear={() => setDebugEvents([])} />
     </div>
   );
 }

@@ -45,6 +45,7 @@ Using The App
   - Live transcript feed
   - Checklist coverage meter (computed via `/api/coverage`)
   - NBQ card (computed via `/api/nbq`) with hotkeys (N accept, S skip)
+  - Debug panel (toggle Show/Hide) displaying raw Realtime events for troubleshooting
 - End & view dashboard to fetch the latest transcript and summary. Upload the call recording to `POST /api/postcall/:sessionId` as `multipart/form-data` with `audio`.
 
 API Contracts
@@ -65,3 +66,13 @@ Limitations & Next Steps
 - Speaker diarization uses a simple rule; enhancing with server VAD + role attribution will improve speaker tags.
 - Expand playbooks and add ingestion UI.
 - Add auth and multi-user accounts.
+
+Testing (optional, live-integration)
+- These tests call OpenAI APIs and (for NBQ/post-call) the database. They require env vars and will incur usage.
+- Setup:
+  - Set env vars in your shell: `export OPENAI_API_KEY=...` and `export DATABASE_URL=...` (or POSTGRES_URL)
+  - From `frontend/`, run: `npm run test`
+- What’s covered:
+  - `/api/coverage`: validates JSON output for a small transcript window
+  - `/api/nbq`: generates one NBQ (requires DB connection and seeded/empty playbooks)
+  - `/api/postcall/[sessionId]`: uploads a tiny silent WAV to exercise the route end‑to‑end (transcription may be empty; we assert a JSON response exists)

@@ -7,7 +7,7 @@ export default function HomePage() {
   const router = useRouter();
 
   const start = async () => {
-    const id = `sess_${Date.now()}`;
+    const id = `sess_${crypto.randomUUID()}`;
     router.push(`/call?sessionId=${id}`);
   };
 

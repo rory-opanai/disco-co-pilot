@@ -11,6 +11,10 @@ export class RealtimeClient {
   off(fn: EventListener) { this.listeners.delete(fn); }
   emit(evt: any) { this.listeners.forEach(fn => fn(evt)); }
 
+  createResponse() {
+    try { this.dc?.send(JSON.stringify({ type: "response.create" })); } catch {}
+  }
+
   async start() {
     const eph = await fetch("/api/realtime/ephemeral").then(r => r.json());
     if (!eph?.client_secret) throw new Error("Failed to obtain ephemeral key");
@@ -70,3 +74,13 @@ export class RealtimeClient {
     try { this.pc?.close(); } catch {}
   }
 }
+    // Emit WebRTC state changes for debugging
+    pc.oniceconnectionstatechange = () => {
+      this.emit({ type: "webrtc.ice_connection_state", state: pc.iceConnectionState });
+    };
+    pc.onsignalingstatechange = () => {
+      this.emit({ type: "webrtc.signaling_state", state: pc.signalingState });
+    };
+    pc.onconnectionstatechange = () => {
+      this.emit({ type: "webrtc.connection_state", state: pc.connectionState });
+    };
