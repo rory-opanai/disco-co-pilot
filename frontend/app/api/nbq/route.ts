@@ -56,7 +56,7 @@ ${kb.map((k) => `Title: ${k.title}\n${k.content}`).join("\n---\n")}`;
         { role: "system", content: sys },
         { role: "user", content: userText }
       ],
-      text: { format: { type: "json_schema", json_schema: { name: "nbq", schema, strict: true } } }
+      text: { format: { type: "json_schema", name: "nbq", schema, strict: true } }
     });
     const text = resp.output_text?.trim();
     if (!text) return NextResponse.json({ nbq: null });
