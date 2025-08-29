@@ -23,6 +23,16 @@ export class RealtimeClient {
 
     const pc = new RTCPeerConnection();
     this.pc = pc;
+    // Emit WebRTC state changes for debugging
+    pc.oniceconnectionstatechange = () => {
+      this.emit({ type: "webrtc.ice_connection_state", state: pc.iceConnectionState });
+    };
+    pc.onsignalingstatechange = () => {
+      this.emit({ type: "webrtc.signaling_state", state: pc.signalingState });
+    };
+    pc.onconnectionstatechange = () => {
+      this.emit({ type: "webrtc.connection_state", state: pc.connectionState });
+    };
     const dc = pc.createDataChannel("oai-events");
     this.dc = dc;
     dc.onmessage = (e) => {
@@ -55,17 +65,28 @@ export class RealtimeClient {
     await pc.setLocalDescription(offer);
 
     const baseUrl = `https://api.openai.com/v1/realtime?model=${encodeURIComponent(model)}`;
-    const r = await fetch(baseUrl, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/sdp",
-        "OpenAI-Beta": "realtime=v1"
-      },
-      body: offer.sdp
-    });
-    const ansSdp = await r.text();
-    await pc.setRemoteDescription({ type: "answer", sdp: ansSdp });
+    try {
+      const r = await fetch(baseUrl, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/sdp",
+          Accept: "application/sdp",
+          "OpenAI-Beta": "realtime=v1"
+        },
+        body: offer.sdp
+      });
+      if (!r.ok) {
+        const body = await r.text();
+        this.emit({ type: "realtime.sdp_error", status: r.status, body });
+        throw new Error(`Realtime SDP exchange failed: ${r.status}`);
+      }
+      const ansSdp = await r.text();
+      await pc.setRemoteDescription({ type: "answer", sdp: ansSdp });
+    } catch (e: any) {
+      this.emit({ type: "realtime.error", message: e?.message || String(e) });
+      throw e;
+    }
   }
 
   async stop() {
@@ -74,13 +95,3 @@ export class RealtimeClient {
     try { this.pc?.close(); } catch {}
   }
 }
-    // Emit WebRTC state changes for debugging
-    pc.oniceconnectionstatechange = () => {
-      this.emit({ type: "webrtc.ice_connection_state", state: pc.iceConnectionState });
-    };
-    pc.onsignalingstatechange = () => {
-      this.emit({ type: "webrtc.signaling_state", state: pc.signalingState });
-    };
-    pc.onconnectionstatechange = () => {
-      this.emit({ type: "webrtc.connection_state", state: pc.connectionState });
-    };
