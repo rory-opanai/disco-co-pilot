@@ -39,6 +39,7 @@ ${kb.map((k) => `Title: ${k.title}\n${k.content}`).join("\n---\n")}`;
 
     const schema = {
       type: "object",
+      additionalProperties: false,
       properties: {
         question: { type: "string" },
         grounded_in: { type: "string" },

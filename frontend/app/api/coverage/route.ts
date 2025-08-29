@@ -37,6 +37,7 @@ export async function POST(req: Request) {
       type: "array",
       items: {
         type: "object",
+        additionalProperties: false,
         properties: {
           category: { type: "string", enum: CATS },
           status: { type: "string", enum: ["known", "partial", "unknown"] },

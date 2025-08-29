@@ -24,14 +24,91 @@ export async function POST(req: Request, { params }: { params: { sessionId: stri
     const user = `Transcript (verbatim):\n${transcript}\n\n${goal ? `Conversation goal/context: ${goal}` : ''}`.trim();
     const schema = {
       type: "object",
+      additionalProperties: false,
       properties: {
-        coverage_table: { type: "array", items: { type: "object", properties: { category: { type: "string" }, status: { type: "string" }, evidence: { type: "array", items: { type: "string" } } }, required: ["category", "status", "evidence"] } },
-        missed_questions: { type: "array", items: { type: "object", properties: { question: { type: "string" }, expected_category: { type: "string" }, reason_for_omission: { type: "string" } }, required: ["question", "expected_category", "reason_for_omission"] } },
-        risks_and_blockers: { type: "array", items: { type: "object", properties: { description: { type: "string" }, impact_level: { type: "string" }, linked_to: { type: "string" } }, required: ["description", "impact_level", "linked_to"] } },
-        recommended_agenda: { type: "array", items: { type: "object", properties: { agenda_item: { type: "string" }, objective: { type: "string" }, priority: { type: "number" } }, required: ["agenda_item", "objective", "priority"] } },
-        follow_up_email: { type: "object", properties: { subject: { type: "string" }, body: { type: "string" }, action_items: { type: "array", items: { type: "string" } } }, required: ["subject", "body", "action_items"] },
-        demo_plan_suggestions: { type: "array", items: { type: "object", properties: { suggestion: { type: "string" }, justification: { type: "string" } }, required: ["suggestion", "justification"] } },
-        discovery_depth_score: { type: "object", properties: { percentage: { type: "number" }, interpretation: { type: "string" } }, required: ["percentage", "interpretation"] },
+        coverage_table: {
+          type: "array",
+          items: {
+            type: "object",
+            additionalProperties: false,
+            properties: {
+              category: { type: "string" },
+              status: { type: "string" },
+              evidence: { type: "array", items: { type: "string" } }
+            },
+            required: ["category", "status", "evidence"]
+          }
+        },
+        missed_questions: {
+          type: "array",
+          items: {
+            type: "object",
+            additionalProperties: false,
+            properties: {
+              question: { type: "string" },
+              expected_category: { type: "string" },
+              reason_for_omission: { type: "string" }
+            },
+            required: ["question", "expected_category", "reason_for_omission"]
+          }
+        },
+        risks_and_blockers: {
+          type: "array",
+          items: {
+            type: "object",
+            additionalProperties: false,
+            properties: {
+              description: { type: "string" },
+              impact_level: { type: "string" },
+              linked_to: { type: "string" }
+            },
+            required: ["description", "impact_level", "linked_to"]
+          }
+        },
+        recommended_agenda: {
+          type: "array",
+          items: {
+            type: "object",
+            additionalProperties: false,
+            properties: {
+              agenda_item: { type: "string" },
+              objective: { type: "string" },
+              priority: { type: "number" }
+            },
+            required: ["agenda_item", "objective", "priority"]
+          }
+        },
+        follow_up_email: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            subject: { type: "string" },
+            body: { type: "string" },
+            action_items: { type: "array", items: { type: "string" } }
+          },
+          required: ["subject", "body", "action_items"]
+        },
+        demo_plan_suggestions: {
+          type: "array",
+          items: {
+            type: "object",
+            additionalProperties: false,
+            properties: {
+              suggestion: { type: "string" },
+              justification: { type: "string" }
+            },
+            required: ["suggestion", "justification"]
+          }
+        },
+        discovery_depth_score: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            percentage: { type: "number" },
+            interpretation: { type: "string" }
+          },
+          required: ["percentage", "interpretation"]
+        },
         missing_reason: { type: "string" }
       },
       required: ["coverage_table","missed_questions","risks_and_blockers","recommended_agenda","follow_up_email","demo_plan_suggestions","discovery_depth_score"]
