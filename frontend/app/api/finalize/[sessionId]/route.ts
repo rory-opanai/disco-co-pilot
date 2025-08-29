@@ -111,7 +111,7 @@ export async function POST(req: Request, { params }: { params: { sessionId: stri
         },
         missing_reason: { type: "string" }
       },
-      required: ["coverage_table","missed_questions","risks_and_blockers","recommended_agenda","follow_up_email","demo_plan_suggestions","discovery_depth_score"]
+      required: ["coverage_table","missed_questions","risks_and_blockers","recommended_agenda","follow_up_email","demo_plan_suggestions","discovery_depth_score","missing_reason"]
     } as const;
 
     const resp = await (openai.responses.create as any)({
