@@ -1,4 +1,4 @@
-// File: /Users/roryh/Github/DiscoCoPilot2/disco-co-pilot/frontend/app/page.tsx
+// File: /Users/roryh/Github/Disco-co-pilot/disco-co-pilot/frontend/app/page.tsx
 import * as entry from '../../../app/page.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 

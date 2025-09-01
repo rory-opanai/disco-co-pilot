@@ -1,78 +1,82 @@
-Discovery Co‑Pilot (Vercel POC)
+# Disco Co-Pilot
 
-Purpose: A discovery co‑pilot for Account Directors (ADs) and Solution Engineers (SEs) that captures discovery in real time, suggests Next Best Questions (NBQs), tracks checklist coverage, and produces a structured summary pack with a Discovery Depth Score.
+Live discovery call assistant with real-time transcription, coverage guidance, and post-call summaries. Built for Vercel (Next.js App Router) with Postgres + pgvector.
 
-Repo Layout
-- `frontend/` Next.js (App Router) + Tailwind. Contains UI and API routes for the Vercel POC (ephemeral Realtime, NBQ, coverage, post‑call).
-- `db/` SQL migrations and seed scripts (pgvector playbooks)
+## Features
+- Live transcription via OpenAI Realtime WebRTC with ephemeral sessions
+- Real-time coverage classification against a discovery checklist
+- Next Best Question (NBQ) suggestions grounded in seeded playbooks
+- Post-call upload → structured summary pack JSON persisted to Postgres
+- Simple integration tests for API routes
 
-Architecture (POC)
-- Frontend: Next.js on Vercel
-  - Browser mic connects to OpenAI Realtime via WebRTC using a short‑lived ephemeral token minted by `/api/realtime/ephemeral` (API key stays server‑side).
-  - Transcript deltas drive UI; coverage (`/api/coverage`) and NBQ (`/api/nbq`) computed server‑side.
-- API Routes (serverless on Vercel): ephemeral token minting, coverage/NBQ inference (Responses API), post‑call transcription and summarization.
-- Data: Postgres with `pgvector` + `pgcrypto` for transcripts/summary/depth scores and playbook vectors.
+## Architecture
+- Frontend/Server: Next.js 14 App Router (serverless/Vercel-friendly)
+- Data: Postgres (with `pgvector`), seeded playbooks for retrieval grounding
+- No separate Express server; server logic lives in Next API routes
 
-Requirements
+## Prerequisites
 - Node.js 18+
-- OpenAI API key with access to Realtime + Responses APIs
-- Postgres 16 with `pgvector` and `pgcrypto` (Vercel Postgres/Neon recommended)
+- Postgres with `pgcrypto` and `pgvector` extensions
+- OpenAI API key with access to Realtime, Responses, Transcribe, and Embeddings
 
-Vercel Setup
-1) Create a Vercel project (Framework Preset: Next.js; Root Directory: `frontend`).
-2) Set Environment Variables in Vercel (Project Settings → Environment Variables):
-   - `OPENAI_API_KEY` (Required)
-   - One of: `DATABASE_URL` (recommended) or `POSTGRES_URL` / `POSTGRES_URL_NON_POOLING` (from Vercel Postgres integration)
-   - Optional: `REALTIME_MODEL`, `RESPONSES_MODEL`, `TRANSCRIBE_MODEL`, `EMBEDDING_MODEL`, `NEXT_PUBLIC_REALTIME_MODEL`
-3) Apply DB migrations to your Postgres (run locally with psql or any SQL client):
-   - `db/migrations/0001_init.sql`
-   - `db/migrations/0002_pgvector.sql`
-   Ensure `CREATE EXTENSION pgcrypto;` and `CREATE EXTENSION vector;` are enabled.
-4) (Optional) Seed playbooks:
-   - In your shell (from repo root): `OPENAI_API_KEY=... DATABASE_URL=... npm run db:seed`
-5) Deploy to Vercel (CI/CD as usual). No separate backend is required for the POC.
+## Setup
+1. Clone the repo and install deps:
+   ```bash
+   npm install
+   ```
+2. Configure environment:
+   - Copy `env.example` to `.env.local` (or `.env`) at project root and set values.
+   - Required: `OPENAI_API_KEY`, `DATABASE_URL`
+   - Optional: `PGSSL`, `APP_TOKEN`, model overrides
+3. Migrate and seed database:
+   ```bash
+   npm run db:migrate
+   npm run db:seed
+   ```
+4. Start dev server:
+   ```bash
+   npm run dev
+   ```
+   Then open http://localhost:3000
 
-Local Dev (no Docker)
-1) Provision Postgres 16 with `pgvector` locally OR use Vercel Postgres/Neon.
-2) Create `frontend/.env.local` using `frontend/.env.local.example` (set `OPENAI_API_KEY`, and `DATABASE_URL` or `POSTGRES_URL`).
-3) Run migrations manually (psql) using files in `db/migrations/`.
-4) `npm install && npm run dev` then open http://localhost:3000
+## Usage
+- Live call: `/call`
+  - Captures mic audio and streams to OpenAI Realtime
+  - Displays transcript, coverage progress, and NBQ suggestions
+  - Click "End & View Summary" to open the dashboard
+- Dashboard & post-call summary: `/dashboard/[sessionId]`
+  - Upload an audio file to generate a summary pack
 
-Using The App
-- Start a session on the homepage by clicking "Start Call" (the app generates a session ID automatically).
-- On the call screen, the browser requests mic permission; it connects via WebRTC directly to OpenAI Realtime using a short‑lived token minted by `/api/realtime/ephemeral`.
-- You’ll see:
-  - Live transcript feed
-  - Checklist coverage meter (computed via `/api/coverage`)
-  - NBQ card (computed via `/api/nbq`) with hotkeys (N accept, S skip)
-  - Debug panel (toggle Show/Hide) displaying raw Realtime events for troubleshooting
-- End & view dashboard to fetch the latest transcript and summary. Upload the call recording to `POST /api/postcall/:sessionId` as `multipart/form-data` with `audio`.
+## Environment Variables
+- Required
+  - `OPENAI_API_KEY`
+  - `DATABASE_URL`
+- Optional
+  - `PGSSL` (set to `disable` for local non-SSL Postgres)
+  - `APP_TOKEN` (if set, clients must send `X-Auth-Token` to API routes)
+  - `REALTIME_MODEL`, `RESPONSES_MODEL`, `TRANSCRIBE_MODEL`, `EMBEDDING_MODEL`
+  - `NEXT_PUBLIC_REALTIME_MODEL`
 
-API Contracts
-- Real-time outbound messages match the JSON contracts in the prompt:
-  - TranscriptUpdate: `{ timestamp, speaker, text }`
-  - NBQ: `{ id, question, grounded_in, confidence, checklist_category }`
-  - ChecklistCoverage: `{ category, status, evidence }`
+## Deploying to Vercel
+- Provide the env vars above in Vercel Project Settings → Environment Variables
+- Ensure your Postgres is reachable from Vercel and `PGSSL` is not `disable`
 
-Security
-- Realtime: Client connects directly to OpenAI Realtime using an ephemeral token minted server-side (API key never exposed).
-- Responses/Embeddings/Transcribe: Called from serverless API routes (server-side only).
+## Development Scripts
+```bash
+npm run dev        # Next.js dev server
+npm run build      # Build for production
+npm run start      # Start production server locally
+npm run db:migrate # Apply SQL migrations
+npm run db:seed    # Seed playbooks with embeddings
+npm run test       # Run API integration tests (frontend workspace)
+```
 
-Notes
-- Ensure your OpenAI account has access to Realtime beta (ephemeral sessions endpoint).
-- For Neon/Vercel Postgres, enable `vector` and `pgcrypto` extensions in the database.
+## Notes on Security & Observability
+- If `APP_TOKEN` is set, Next API routes require `X-Auth-Token` to mitigate abuse
+- Basic structured logs and request timing metrics are emitted from API routes
+- Consider adding a WAF (Vercel Protect) and per-user rate limiting
 
-Limitations & Next Steps
-- Speaker diarization uses a simple rule; enhancing with server VAD + role attribution will improve speaker tags.
-- Expand playbooks and add ingestion UI.
-- Add auth and multi-user accounts.
-
-Testing (optional, live-integration)
-- These tests call OpenAI APIs and (for NBQ/post-call) the database. They require env vars and will incur usage.
-- Setup:
-  - Set env vars in your shell: `export OPENAI_API_KEY=...` and `export DATABASE_URL=...` (or POSTGRES_URL)
-  - From `frontend/`, run: `npm run test`
-- What’s covered:
-  - `/api/coverage`: validates JSON output for a small transcript window
-  - `/api/nbq`: generates one NBQ (requires DB connection and seeded/empty playbooks)
-  - `/api/postcall/[sessionId]`: uploads a tiny silent WAV to exercise the route end‑to‑end (transcription may be empty; we assert a JSON response exists)
+## Contributing
+- Keep server logic in Next.js API routes
+- Prefer shared utils in `frontend/lib/server/*`
+- Add tests in `frontend/tests/*`

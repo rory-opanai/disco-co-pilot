@@ -8,7 +8,9 @@
     "dev": "npm run dev --workspace frontend",
     "build": "npm run build --workspace frontend",
     "start": "npm run start --workspace frontend",
-    "db:seed": "NODE_OPTIONS=--no-warnings npx tsx db/seed/seed_playbooks.ts"
+    "db:migrate": "node backend/dist/scripts/migrate.js",
+    "db:seed": "NODE_OPTIONS=--no-warnings npx tsx db/seed/seed_playbooks.ts",
+    "test": "npm run test --workspace frontend"
   },
   "devDependencies": {}
 }

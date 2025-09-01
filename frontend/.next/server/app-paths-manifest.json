@@ -1,10 +1,6 @@
 {
   "/_not-found/page": "app/_not-found/page.js",
-  "/api/nbq/route": "app/api/nbq/route.js",
-  "/api/postcall/[sessionId]/route": "app/api/postcall/[sessionId]/route.js",
-  "/api/realtime/ephemeral/route": "app/api/realtime/ephemeral/route.js",
-  "/api/coverage/route": "app/api/coverage/route.js",
-  "/dashboard/[sessionId]/page": "app/dashboard/[sessionId]/page.js",
   "/call/page": "app/call/page.js",
+  "/api/realtime/ephemeral/route": "app/api/realtime/ephemeral/route.js",
   "/page": "app/page.js"
 }

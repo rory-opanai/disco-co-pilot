@@ -1,4 +1,4 @@
-// File: /Users/roryh/Github/DiscoCoPilot2/disco-co-pilot/frontend/app/api/realtime/ephemeral/route.ts
+// File: /Users/roryh/Github/Disco-co-pilot/disco-co-pilot/frontend/app/api/realtime/ephemeral/route.ts
 import * as entry from '../../../../../../app/api/realtime/ephemeral/route.js'
 import type { NextRequest } from 'next/server.js'
 

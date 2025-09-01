@@ -16,10 +16,16 @@ export class RealtimeClient {
   }
 
   async start() {
-    const eph = await fetch("/api/realtime/ephemeral").then(r => r.json());
-    if (!eph?.client_secret) throw new Error("Failed to obtain ephemeral key");
-    const token = eph.client_secret as string;
-    const model = (eph.model as string) || (process.env.NEXT_PUBLIC_REALTIME_MODEL || "gpt-4o-realtime-preview-2024-12-17");
+    // Defer ephemeral fetch until just before SDP POST to avoid token expiry
+    const getEphemeral = async () => {
+      const res = await fetch("/api/realtime/ephemeral");
+      if (!res.ok) throw new Error(`Ephemeral fetch failed: ${res.status}`);
+      const json = await res.json();
+      const tok = json?.client_secret as string | undefined;
+      const mdl = (json?.model as string) || (process.env.NEXT_PUBLIC_REALTIME_MODEL || "gpt-4o-realtime-preview-2024-12-17");
+      if (!tok) throw new Error("Failed to obtain ephemeral key");
+      return { token: tok, model: mdl };
+    };
 
     const pc = new RTCPeerConnection();
     this.pc = pc;
@@ -46,7 +52,7 @@ export class RealtimeClient {
       const sessionUpdate = {
         type: "session.update",
         session: {
-          modalities: ["text"],
+          modalities: ["text", "audio"],
           turn_detection: { type: "server_vad", threshold: 0.5, prefix_padding_ms: 300, silence_duration_ms: 500, create_response: false, interrupt_response: true },
           instructions: "You are a live transcriber. Transcribe the user's speech verbatim with no additional commentary. Do not speak back.",
           input_audio_transcription: { model: (process.env.NEXT_PUBLIC_TRANSCRIBE_MODEL || "gpt-4o-mini-transcribe") }
@@ -60,11 +66,24 @@ export class RealtimeClient {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
     stream.getTracks().forEach(t => pc.addTrack(t, stream));
 
+    // Wait for ICE gathering to complete to improve SDP success rate
+    const waitForIceGatheringComplete = () => new Promise<void>((resolve) => {
+      if (pc.iceGatheringState === "complete") return resolve();
+      const check = () => {
+        if (pc.iceGatheringState === "complete") {
+          pc.removeEventListener("icegatheringstatechange", check);
+          resolve();
+        }
+      };
+      pc.addEventListener("icegatheringstatechange", check);
+    });
+
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
+    await waitForIceGatheringComplete().catch(() => {});
 
-    const baseUrl = `https://api.openai.com/v1/realtime?model=${encodeURIComponent(model)}`;
-    try {
+    const attemptSdpPost = async (token: string, model: string) => {
+      const baseUrl = `https://api.openai.com/v1/realtime?model=${encodeURIComponent(model)}`;
       const r = await fetch(baseUrl, {
         method: "POST",
         headers: {
@@ -75,6 +94,20 @@ export class RealtimeClient {
         },
         body: offer.sdp
       });
+      return r;
+    };
+
+    try {
+      // First try with a fresh ephemeral token
+      let { token, model } = await getEphemeral();
+      let r = await attemptSdpPost(token, model);
+      if (r.status === 401) {
+        // One-time retry with a new token in case of expiry/race
+        const body = await r.text();
+        this.emit({ type: "realtime.sdp_error", status: r.status, body, retry: true });
+        ({ token, model } = await getEphemeral());
+        r = await attemptSdpPost(token, model);
+      }
       if (!r.ok) {
         const body = await r.text();
         this.emit({ type: "realtime.sdp_error", status: r.status, body });

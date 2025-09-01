@@ -114,23 +114,36 @@ export async function POST(req: Request, { params }: { params: { sessionId: stri
       required: ["coverage_table","missed_questions","risks_and_blockers","recommended_agenda","follow_up_email","demo_plan_suggestions","discovery_depth_score","missing_reason"]
     } as const;
 
-    const resp = await (openai.responses.create as any)({
-      model: RESPONSES_MODEL,
-      input: [ { role: "system", content: sys }, { role: "user", content: user } ],
-      text: { format: { type: "json_schema", name: "summary_pack", schema, strict: true } }
-    });
-    const jsonText = resp.output_text?.trim();
-    const pack = jsonText ? JSON.parse(jsonText) : { coverage_table: null, missed_questions: null, risks_and_blockers: null, recommended_agenda: null, follow_up_email: null, demo_plan_suggestions: null, discovery_depth_score: null, missing_reason: "No output" };
+    let pack: any;
+    try {
+      const resp = await (openai.responses.create as any)({
+        model: RESPONSES_MODEL,
+        input: [ { role: "system", content: sys }, { role: "user", content: user } ],
+        text: { format: { type: "json_schema", name: "summary_pack", schema, strict: true } }
+      });
+      const jsonText = resp.output_text?.trim();
+      pack = jsonText ? JSON.parse(jsonText) : { coverage_table: null, missed_questions: null, risks_and_blockers: null, recommended_agenda: null, follow_up_email: null, demo_plan_suggestions: null, discovery_depth_score: null, missing_reason: "No output" };
+    } catch (e: any) {
+      console.error("[finalize] openai_error:", e?.message || e);
+      return NextResponse.json({ error: e?.message || "openai_error", stage: "openai" }, { status: 500 });
+    }
 
-    await query(`INSERT INTO sessions(id, created_at, finalized_at) VALUES($1, NOW(), NOW()) ON CONFLICT (id) DO UPDATE SET finalized_at = NOW()`, [sessionId]);
-    const { rows: tRows } = await query<{ id: string }>(`INSERT INTO transcripts(session_id, content) VALUES($1, $2) RETURNING id`, [sessionId, transcript]);
-    await query(`INSERT INTO summary_packs(session_id, payload) VALUES($1, $2)`, [sessionId, pack]);
-    if (pack.discovery_depth_score) {
-      await query(`INSERT INTO depth_scores(session_id, percentage, interpretation) VALUES($1, $2, $3)`, [sessionId, pack.discovery_depth_score.percentage, pack.discovery_depth_score.interpretation]);
+    let transcriptId: string | null = null;
+    try {
+      await query(`INSERT INTO sessions(id, created_at, finalized_at) VALUES($1, NOW(), NOW()) ON CONFLICT (id) DO UPDATE SET finalized_at = NOW()`, [sessionId]);
+      const { rows: tRows } = await query<{ id: string }>(`INSERT INTO transcripts(session_id, content) VALUES($1, $2) RETURNING id`, [sessionId, transcript]);
+      transcriptId = tRows[0]?.id || null;
+      await query(`INSERT INTO summary_packs(session_id, payload) VALUES($1, $2)`, [sessionId, pack]);
+      if (pack.discovery_depth_score) {
+        await query(`INSERT INTO depth_scores(session_id, percentage, interpretation) VALUES($1, $2, $3)`, [sessionId, pack.discovery_depth_score.percentage, pack.discovery_depth_score.interpretation]);
+      }
+    } catch (e: any) {
+      console.error("[finalize] db_error:", e?.message || e);
+      return NextResponse.json({ error: e?.message || "db_error", stage: "db", summary: pack }, { status: 500 });
     }
     const ms = Date.now() - t0;
     console.log(`[finalize] rid=${rid} ms=${ms} transcript_chars=${transcript.length}`);
-    return NextResponse.json({ sessionId, transcriptId: tRows[0]?.id, summary: pack, rid, ms });
+    return NextResponse.json({ sessionId, transcriptId, summary: pack, rid, ms });
   } catch (e: any) {
     return NextResponse.json({ error: e.message || "internal" }, { status: 500 });
   }
