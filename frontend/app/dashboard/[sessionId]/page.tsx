@@ -1,7 +1,7 @@
 "use client";
 export const dynamic = "force-dynamic";
 import React, { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 
 export default function DashboardPage() {
   const { sessionId } = useParams<{ sessionId: string }>();
@@ -9,23 +9,43 @@ export default function DashboardPage() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const backend = ""; // same origin
+  const sp = useSearchParams();
+  const local = sp.get("local") === "1";
 
   useEffect(() => {
     const load = async () => {
       try {
         setLoading(true);
+        if (local) {
+          // Prefer locally persisted data when flagged
+          const summaryRaw = typeof window !== 'undefined' ? localStorage.getItem(`summary:${sessionId}`) : null;
+          const transcriptRaw = typeof window !== 'undefined' ? localStorage.getItem(`transcript:${sessionId}`) : null;
+          if (summaryRaw || transcriptRaw) {
+            setData({ transcript: transcriptRaw, summary: summaryRaw ? JSON.parse(summaryRaw) : null, persisted: false });
+            return;
+          }
+        }
         const res = await fetch(`/api/postcall/${sessionId}`);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const json = await res.json();
         setData(json);
       } catch (e) {
+        // As a fallback, try local cache even without the flag
+        try {
+          const summaryRaw = typeof window !== 'undefined' ? localStorage.getItem(`summary:${sessionId}`) : null;
+          const transcriptRaw = typeof window !== 'undefined' ? localStorage.getItem(`transcript:${sessionId}`) : null;
+          if (summaryRaw || transcriptRaw) {
+            setData({ transcript: transcriptRaw, summary: summaryRaw ? JSON.parse(summaryRaw) : null, persisted: false, error: String(e) });
+            return;
+          }
+        } catch {}
         setData({ transcript: null, summary: null, error: String(e) });
       } finally {
         setLoading(false);
       }
     };
     load();
-  }, [sessionId]);
+  }, [sessionId, local]);
 
   const upload = async (file: File) => {
     const form = new FormData();

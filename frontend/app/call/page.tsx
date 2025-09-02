@@ -152,7 +152,25 @@ function CallInner() {
                   headers: { "Content-Type": "application/json" },
                   body: JSON.stringify({ transcript: text, goal })
                 });
-                if (!res.ok) throw new Error(await res.text());
+                // Try to parse JSON either way to capture summary on DB errors
+                const payload = await res.json().catch(async () => ({ error: await res.text() }));
+                // Persist locally as a fallback for dashboard rendering
+                try {
+                  if (payload?.summary) {
+                    localStorage.setItem(`summary:${sessionId}`, JSON.stringify(payload.summary));
+                  }
+                  if (text) {
+                    localStorage.setItem(`transcript:${sessionId}`, text);
+                  }
+                } catch {}
+                if (!res.ok) {
+                  // If DB failed but we have a summary, route with local flag
+                  if (payload?.summary) {
+                    router.push(`/dashboard/${sessionId}?local=1`);
+                    return;
+                  }
+                  throw new Error(payload?.error || `HTTP ${res.status}`);
+                }
                 router.push(`/dashboard/${sessionId}`);
               } catch (e: any) {
                 setErrorMsg(e?.message || "Failed to finalize session");
