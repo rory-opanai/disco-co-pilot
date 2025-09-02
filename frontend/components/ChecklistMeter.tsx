@@ -19,8 +19,13 @@ const CATS = [
 export default function ChecklistMeter({ coverage }: { coverage: Record<string, string> }) {
   const pct = useMemo(() => {
     const tot = CATS.length;
-    const got = CATS.filter((c) => ["known", "partial"].includes(coverage[c])).length;
-    return Math.round((got / tot) * 100);
+    let score = 0;
+    for (const c of CATS) {
+      const s = coverage[c];
+      if (s === 'known') score += 1;
+      else if (s === 'partial') score += 0.3; // be conservative to avoid inflated progress
+    }
+    return Math.round((score / tot) * 100);
   }, [coverage]);
 
   return (
@@ -49,4 +54,3 @@ function dotColor(status?: string) {
       return "#9ca3af"; // gray
   }
 }
-

@@ -15,6 +15,8 @@ function CallInner() {
   const [coverage, setCoverage] = useState<Record<string, string>>({});
   type NBQItem = { id: string; question: string; checklist_category?: string; confidence?: number; source?: 'fast' | 'refine' };
   const [nbqItems, setNbqItems] = useState<NBQItem[]>([]);
+  const nbqRef = useRef<NBQItem[]>([]);
+  useEffect(() => { nbqRef.current = nbqItems; }, [nbqItems]);
   const nbqDebounceRef = useRef<any>(null);
   const nbqInFlightRef = useRef<boolean>(false);
   const [goal, setGoal] = useState<string>("");
@@ -92,37 +94,52 @@ function CallInner() {
   function isCoveredStatus(status?: string) {
     if (!status) return false;
     const s = status.toLowerCase();
-    return s.includes('complete') || s.includes('covered') || s.includes('done');
+    // Live coverage uses: known | partial | unknown
+    return s === 'known';
   }
 
   function fastSeedCandidates(windowText: string, cov: Record<string,string>, goalText: string, max: number): NBQItem[] {
+    // Value-Based Discovery Blueprint pillars
     const pillars: Array<{ key: string; label: string; templates: string[] }> = [
-      { key: 'business_priorities', label: 'Business Priorities', templates: [
-        'What are the top business priorities you’re focused on this quarter?',
-        'How does success get measured for you and your team?',
+      { key: 'context', label: 'Context & Rapport', templates: [
+        'What does your organization do, and what’s your role in it?',
+        'What are your top business priorities this quarter or year?',
+        'How is success measured for you and your team?',
       ]},
-      { key: 'challenges', label: 'Challenges', templates: [
-        'What challenges are currently blocking those priorities?',
-        'If this isn’t addressed, what will the impact be?',
+      { key: 'current_situation', label: 'Current Situation', templates: [
+        'What tools, systems, or processes are you using today?',
+        'What’s working well right now?',
+        'Where are the biggest challenges or bottlenecks?',
       ]},
-      { key: 'impact', label: 'Impact', templates: [
-        'What would solving this problem mean for your organization?',
-        'How are you quantifying the cost of this challenge today?',
+      { key: 'drivers_challenges', label: 'Business Drivers & Challenges', templates: [
+        'What key initiatives or strategic projects are underway?',
+        'What challenges are preventing you from hitting those goals?',
+        'Who is most impacted by these challenges?',
+        'What happens if these challenges aren’t solved?',
       ]},
-      { key: 'stakeholders', label: 'Stakeholders', templates: [
-        'Who are the key stakeholders involved in this initiative?',
-        'How do decisions like this typically get made internally?',
+      { key: 'metrics_impact', label: 'Metrics & Impact', templates: [
+        'How do you measure the impact of these challenges today (time, cost, revenue, risk, CSAT)?',
+        'Can you quantify the cost of the problem (lost revenue, wasted hours, missed opportunities)?',
+        'What would solving this challenge unlock for you?',
       ]},
-      { key: 'tech_stack', label: 'Tech Stack', templates: [
-        'What does your current stack look like for this workflow?',
-        'Do you anticipate any integration constraints we should factor in (APIs, auth, data)?',
+      { key: 'decision_process', label: 'Decision & Buying Process', templates: [
+        'Who is typically involved in evaluating or approving solutions like this?',
+        'What does your internal decision-making process look like?',
+        'What is your expected timeline for solving this problem?',
+        'Are there any budget considerations or constraints we should be aware of?',
       ]},
-      { key: 'timeline_budget', label: 'Timeline & Budget', templates: [
-        'Is there a target timeline or event we should work toward?',
-        'Do you have a budget range earmarked for solving this?',
+      { key: 'success_criteria', label: 'Success Criteria', templates: [
+        'What does success look like for you 6–12 months from now?',
+        'How will you evaluate if a solution is delivering value?',
+        'Are there specific KPIs or outcomes you must hit?',
+      ]},
+      { key: 'next_steps', label: 'Next Steps', templates: [
+        'If we can help you solve this, what would be the best next step?',
+        'Who else should we bring into the conversation?',
+        'Would you like us to outline a tailored solution or business case for review?',
       ]},
       { key: 'risks', label: 'Risks', templates: [
-        'What risks or unknowns would worry you about moving forward?',
+        'Are there any risks or unknowns that would worry you about moving forward?',
       ]},
     ];
     const gaps = Object.entries(cov || {}).filter(([_, v]) => !isCoveredStatus(v)).map(([k]) => k.toLowerCase());
@@ -195,8 +212,17 @@ function CallInner() {
                     for (const c of cov.coverage) next[c.category] = c.status;
                     setCoverage(next);
                   }
-                  // Drop NBQs that the last user utterance likely answered
-                  setNbqItems((prev) => prev.filter(it => !isLikelyAnswerTo(it.question, lastUtter)));
+                  // Drop NBQs likely answered by the last 1-2 utterances (LLM check + heuristic)
+                  const recent = [lastUtter, tRef.current.slice(-2)[0]?.text].filter(Boolean) as string[];
+                  // Heuristic quick filter
+                  setNbqItems((prev) => prev.filter(it => !recent.some(u => isLikelyAnswerTo(it.question, u))));
+                  // Server check for better semantics (non-blocking)
+                  try {
+                    const resAns = await fetch('/api/nbq/answered', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nbqs: nbqRef.current.map(({ id, question }) => ({ id, question })), recentUtterances: recent }) });
+                    const ansJson = await resAns.json();
+                    const ids = Array.isArray(ansJson.answeredIds) ? new Set(ansJson.answeredIds) : new Set<string>();
+                    if (ids.size) setNbqItems((prev) => prev.filter(it => !ids.has(it.id)));
+                  } catch {}
                   // Fast path: top-up with heuristic seeds immediately
                   setNbqItems((prev) => {
                     const seeds = fastSeedCandidates(transcriptWindow, cRef.current, goalRef.current, NBQ_TARGET_COUNT);

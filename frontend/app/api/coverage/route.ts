@@ -31,7 +31,11 @@ export async function POST(req: Request) {
     const { transcriptWindow } = body || {};
     if (!transcriptWindow) return NextResponse.json({ error: "transcriptWindow required" }, { status: 400 });
 
-    const sys = `Classify discovery coverage for the categories below. Output JSON exactly matching the schema.`;
+    const sys = `Classify discovery coverage for the categories below. Be conservative: 
+"known" only if the transcript contains a clear, explicit answer for that category; 
+"partial" if there is a hint or vague reference but key details are missing; 
+"unknown" if not addressed.
+Output JSON exactly matching the schema.`;
     const user = `Transcript window:\n${transcriptWindow}\n\nCategories: ${CATS.join(", ")}`;
     const schema = {
       type: "object",
