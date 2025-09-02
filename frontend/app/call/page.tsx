@@ -47,7 +47,9 @@ function CallInner() {
     setNbqItems((prev) => prev.filter((it) => !isCoveredStatus(coverage[it.checklist_category || ''])));
   }, [coverage]);
 
-  const NBQ_DEBOUNCE_MS = 1200; // faster follow-up
+  // Debounce for refine calls; keep snappy but avoid hammering
+  const NBQ_DEBOUNCE_MS = 600;
+  const THROTTLE_MS = 800; // min gap between coverage/NBQ cycles
   const NBQ_TARGET_COUNT = 5;
 
   function uniqByQuestion(items: NBQItem[]) {
@@ -63,13 +65,23 @@ function CallInner() {
   const STOPWORDS = new Set<string>([
     'the','and','for','with','that','this','from','your','you','are','our','was','were','have','has','had','will','would','could','should','about','into','over','above','below','what','when','where','which','who','how','why','does','do','did','is','it','to','in','on','as','of','at','by','an','a','or','be'
   ]);
+  const ACRONYMS = new Set<string>([
+    'api','sdk','sso','saml','oauth','oidc','soc2','gdpr','pci','hipaa','iso27001','sla','slo','tco','roi','ml','ai','poc'
+  ]);
 
   function tokenize(text: string): string[] {
-    return (text || '')
-      .toLowerCase()
-      .replace(/[^a-z0-9\s]/g, ' ')
+    const raw = (text || '')
+      .replace(/[^A-Za-z0-9\s]/g, ' ')
       .split(/\s+/)
-      .filter(w => w && w.length >= 4 && !STOPWORDS.has(w));
+      .filter(Boolean);
+    const out: string[] = [];
+    for (const tok of raw) {
+      const lower = tok.toLowerCase();
+      const isAcr = /^[A-Z0-9]{2,6}$/.test(tok) || ACRONYMS.has(lower);
+      // Keep acronyms like SDK/API even if short; otherwise require len>=3
+      if ((isAcr || lower.length >= 3) && !STOPWORDS.has(lower)) out.push(lower);
+    }
+    return out;
   }
 
   function isLikelyQuestion(text: string): boolean {
@@ -88,7 +100,8 @@ function CallInner() {
     const minBasis = Math.max(2, Math.min(qTok.size, 6));
     const ratio = overlap / minBasis;
     // Heuristics: enough topical overlap and the utterance is declarative
-    return overlap >= 2 && ratio >= 0.4;
+    // Slightly more permissive to speed up answered detection
+    return overlap >= 2 && ratio >= 0.33;
   }
 
   function isCoveredStatus(status?: string) {
@@ -196,7 +209,7 @@ function CallInner() {
           setTranscript((t) => [...t, { speaker: "Customer", text: tr, timestamp: new Date().toISOString() }]);
           // Also trigger coverage/NBQ using the finalized utterance, subject to throttle
           const now = Date.now();
-          if (!inFlightRef.current && now - lastReqTsRef.current >= 1200) {
+          if (!inFlightRef.current && now - lastReqTsRef.current >= THROTTLE_MS) {
             inFlightRef.current = true;
             const transcriptWindow = [...tRef.current, { speaker: "Customer", text: tr, timestamp: new Date().toISOString() }]
               .slice(-40)
@@ -213,7 +226,10 @@ function CallInner() {
                     setCoverage(next);
                   }
                   // Drop NBQs likely answered by the last 1-2 utterances (LLM check + heuristic)
-                  const recent = [lastUtter, tRef.current.slice(-2)[0]?.text].filter(Boolean) as string[];
+                  const recent = Array.from(new Set([
+                    lastUtter,
+                    ...tRef.current.slice(-3).map(t => t.text)
+                  ].filter(Boolean))).slice(0, 3) as string[];
                   // Heuristic quick filter
                   setNbqItems((prev) => prev.filter(it => !recent.some(u => isLikelyAnswerTo(it.question, u))));
                   // Server check for better semantics (non-blocking)
