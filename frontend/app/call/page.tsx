@@ -29,6 +29,7 @@ function CallInner() {
   const lastReqTsRef = useRef<number>(0);
   const inFlightRef = useRef<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [finalizing, setFinalizing] = useState<boolean>(false);
 
   // Seed initial NBQs so the panel isn't empty at start
   useEffect(() => {
@@ -55,6 +56,37 @@ function CallInner() {
       if (!seen.has(key)) { seen.add(key); out.push(it); }
     }
     return out;
+  }
+
+  const STOPWORDS = new Set<string>([
+    'the','and','for','with','that','this','from','your','you','are','our','was','were','have','has','had','will','would','could','should','about','into','over','above','below','what','when','where','which','who','how','why','does','do','did','is','it','to','in','on','as','of','at','by','an','a','or','be'
+  ]);
+
+  function tokenize(text: string): string[] {
+    return (text || '')
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, ' ')
+      .split(/\s+/)
+      .filter(w => w && w.length >= 4 && !STOPWORDS.has(w));
+  }
+
+  function isLikelyQuestion(text: string): boolean {
+    const t = (text || '').trim();
+    return t.endsWith('?') || /^(what|how|why|when|who|which|do|does|did|is|are|can|could|would|should)\b/i.test(t);
+  }
+
+  function isLikelyAnswerTo(question: string, utterance: string): boolean {
+    if (!utterance || !question) return false;
+    // If the utterance is itself a question, assume not answered
+    if (isLikelyQuestion(utterance)) return false;
+    const qTok = new Set(tokenize(question));
+    const uTok = new Set(tokenize(utterance));
+    let overlap = 0;
+    qTok.forEach(t => { if (uTok.has(t)) overlap++; });
+    const minBasis = Math.max(2, Math.min(qTok.size, 6));
+    const ratio = overlap / minBasis;
+    // Heuristics: enough topical overlap and the utterance is declarative
+    return overlap >= 2 && ratio >= 0.4;
   }
 
   function isCoveredStatus(status?: string) {
@@ -163,6 +195,8 @@ function CallInner() {
                     for (const c of cov.coverage) next[c.category] = c.status;
                     setCoverage(next);
                   }
+                  // Drop NBQs that the last user utterance likely answered
+                  setNbqItems((prev) => prev.filter(it => !isLikelyAnswerTo(it.question, lastUtter)));
                   // Fast path: top-up with heuristic seeds immediately
                   setNbqItems((prev) => {
                     const seeds = fastSeedCandidates(transcriptWindow, cRef.current, goalRef.current, NBQ_TARGET_COUNT);
@@ -207,12 +241,14 @@ function CallInner() {
             className="text-sm border rounded px-2 py-1 w-56"
           />
           <button
+            disabled={finalizing}
             onClick={async () => {
               // Collapse transcript into a single string and finalize
               const text = tRef.current
                 .map((t) => `${t.speaker}: ${t.text}`)
                 .join("\n");
               try {
+                setFinalizing(true);
                 const res = await fetch(`/api/finalize/${sessionId}`, {
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
@@ -240,11 +276,16 @@ function CallInner() {
                 router.push(`/dashboard/${sessionId}`);
               } catch (e: any) {
                 setErrorMsg(e?.message || "Failed to finalize session");
+              } finally {
+                setFinalizing(false);
               }
             }}
-            className="bg-slate-800 text-white px-3 py-2 rounded"
+            className={"bg-slate-800 text-white px-3 py-2 rounded flex items-center gap-2 " + (finalizing ? 'opacity-60 cursor-not-allowed' : '')}
           >
-            End & Save Summary
+            {finalizing && (
+              <span className="inline-block w-3 h-3 rounded-full border-2 border-white border-t-transparent animate-spin"></span>
+            )}
+            <span>{finalizing ? 'Saving…' : 'End & Save Summary'}</span>
           </button>
         </div>
       </div>
