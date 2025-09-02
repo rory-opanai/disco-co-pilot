@@ -14,6 +14,10 @@ function CallInner() {
   const [transcript, setTranscript] = useState<{ speaker: string; text: string; timestamp: string }[]>([]);
   const [coverage, setCoverage] = useState<Record<string, string>>({});
   const [nbq, setNbq] = useState<any | null>(null);
+  const [nbqQueued, setNbqQueued] = useState<any | null>(null);
+  const [nbqLockedUntil, setNbqLockedUntil] = useState<number>(0);
+  const nbqDebounceRef = useRef<any>(null);
+  const nbqInFlightRef = useRef<boolean>(false);
   const [goal, setGoal] = useState<string>("");
   const tRef = useRef(transcript);
   const cRef = useRef(coverage);
@@ -26,6 +30,37 @@ function CallInner() {
   const lastReqTsRef = useRef<number>(0);
   const inFlightRef = useRef<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const NBQ_DEBOUNCE_MS = 2500; // 2–3s
+  const NBQ_CONF_DELTA = 0.1;   // min improvement to replace
+  const NBQ_STICKY_MS = 10000;  // 8–12s lock
+
+  function considerNbqCandidate(candidate: any) {
+    const now = Date.now();
+    const current = nbq as any | null;
+    const curConf = typeof current?.confidence === "number" ? current.confidence : 0;
+    const newConf = typeof candidate?.confidence === "number" ? candidate.confidence : 0;
+    const improved = !current || (newConf - curConf) >= NBQ_CONF_DELTA;
+    if (!current) {
+      setNbq(candidate);
+      setNbqQueued(null);
+      setNbqLockedUntil(now + NBQ_STICKY_MS);
+      return;
+    }
+    // If within sticky period, queue improvements silently
+    if (now < nbqLockedUntil) {
+      if (improved) {
+        setNbqQueued(candidate);
+      }
+      return;
+    }
+    // Not locked; only replace if improved
+    if (improved) {
+      setNbq(candidate);
+      setNbqQueued(null);
+      setNbqLockedUntil(now + NBQ_STICKY_MS);
+    }
+  }
 
   useEffect(() => {
     const rc = new RealtimeClient();
@@ -52,16 +87,26 @@ function CallInner() {
               (async () => {
                 try {
                   const lastUtter = tr;
-                  const [cov, nbqRes] = await Promise.all([
-                    fetch("/api/coverage", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ transcriptWindow: window }) }).then(r => r.json()),
-                    fetch("/api/nbq", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ lastUtterance: lastUtter, checklist: cRef.current, goal: goalRef.current }) }).then(r => r.json())
-                  ]);
+                  const cov = await fetch("/api/coverage", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ transcriptWindow: window }) }).then(r => r.json());
                   if (Array.isArray(cov.coverage)) {
                     const next: Record<string, string> = { ...cRef.current };
                     for (const c of cov.coverage) next[c.category] = c.status;
                     setCoverage(next);
                   }
-                  if (nbqRes.nbq) setNbq(nbqRes.nbq);
+                  // Debounce NBQ refresh: wait for a quiet window post-turn
+                  if (nbqDebounceRef.current) {
+                    clearTimeout(nbqDebounceRef.current as number);
+                  }
+                  nbqDebounceRef.current = window.setTimeout(async () => {
+                    if (nbqInFlightRef.current) return;
+                    nbqInFlightRef.current = true;
+                    try {
+                      const nbqRes = await fetch("/api/nbq", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ lastUtterance: lastUtter, checklist: cRef.current, goal: goalRef.current }) }).then(r => r.json());
+                      if (nbqRes?.nbq) considerNbqCandidate(nbqRes.nbq);
+                    } finally {
+                      nbqInFlightRef.current = false;
+                    }
+                  }, NBQ_DEBOUNCE_MS);
                   setErrorMsg(null);
                 } catch (e: any) {
                   setErrorMsg(e?.message || "Failed to compute coverage/NBQ");
@@ -117,7 +162,26 @@ function CallInner() {
         </div>
       </div>
       {errorMsg && <div className="text-xs text-red-600">{errorMsg}</div>}
-      <Overlay sessionId={sessionId} connected={connected} transcript={transcript} coverage={coverage} nbq={nbq} onNbqAction={(action) => setNbq(null)} />
+      <Overlay
+        sessionId={sessionId}
+        connected={connected}
+        transcript={transcript}
+        coverage={coverage}
+        nbq={nbq}
+        nbqRefreshAvailable={!!nbqQueued}
+        onNbqRefreshNow={() => {
+          if (nbqQueued) {
+            considerNbqCandidate(nbqQueued);
+            setNbqQueued(null);
+          }
+        }}
+        onNbqAction={(action) => {
+          // On accept/skip, clear current and queued, and release lock
+          setNbq(null);
+          setNbqQueued(null);
+          setNbqLockedUntil(0);
+        }}
+      />
       <DebugPanel open={debugOpen} onToggle={() => setDebugOpen((v) => !v)} events={debugEvents} onClear={() => setDebugEvents([])} />
     </div>
   );

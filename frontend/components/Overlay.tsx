@@ -10,10 +10,12 @@ type Props = {
   transcript: { speaker: string; text: string; timestamp: string }[];
   coverage: Record<string, string>;
   nbq: any | null;
+  nbqRefreshAvailable?: boolean;
+  onNbqRefreshNow?: () => void;
   onNbqAction: (action: "accept" | "skip") => void;
 };
 
-export default function Overlay({ sessionId, connected, transcript, coverage, nbq, onNbqAction }: Props) {
+export default function Overlay({ sessionId, connected, transcript, coverage, nbq, nbqRefreshAvailable, onNbqRefreshNow, onNbqAction }: Props) {
   // Parent manages all state; this component renders UI only.
 
   return (
@@ -32,7 +34,7 @@ export default function Overlay({ sessionId, connected, transcript, coverage, nb
         </div>
         <div className="border rounded p-3">
           <div className="font-semibold mb-2">Next Best Question</div>
-          <NBQCard nbq={nbq} onAction={onNbqAction} />
+          <NBQCard nbq={nbq} onAction={onNbqAction} hasQueuedUpdate={!!nbqRefreshAvailable} onRefreshNow={onNbqRefreshNow} />
           <div className="text-xs text-slate-500 mt-2">Hotkeys: N = accept, S = skip</div>
         </div>
       </div>

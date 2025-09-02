@@ -1,9 +1,9 @@
 "use client";
 import React, { useEffect } from "react";
 
-type Props = { nbq: any | null; onAction: (action: "accept" | "skip") => void };
+type Props = { nbq: any | null; onAction: (action: "accept" | "skip") => void; hasQueuedUpdate?: boolean; onRefreshNow?: () => void };
 
-export default function NBQCard({ nbq, onAction }: Props) {
+export default function NBQCard({ nbq, onAction, hasQueuedUpdate, onRefreshNow }: Props) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (!nbq) return;
@@ -17,7 +17,14 @@ export default function NBQCard({ nbq, onAction }: Props) {
   if (!nbq) return <div className="text-slate-500">Awaiting next suggestion…</div>;
   return (
     <div className="space-y-2">
-      <div className="text-sm text-slate-600">Category: {nbq.checklist_category}</div>
+      <div className="flex items-center justify-between">
+        <div className="text-sm text-slate-600">Category: {nbq.checklist_category}</div>
+        {hasQueuedUpdate ? (
+          <button className="text-[10px] px-2 py-0.5 rounded bg-amber-100 text-amber-800" onClick={onRefreshNow} title="A better suggestion is ready">
+            Refresh available
+          </button>
+        ) : null}
+      </div>
       <div className="text-lg">{nbq.question}</div>
       <div className="flex gap-2">
         <button className="bg-green-600 text-white px-3 py-1 rounded" onClick={() => onAction("accept")}>Accept (N)</button>
