@@ -13,9 +13,8 @@ function CallInner() {
   const [connected, setConnected] = useState(false);
   const [transcript, setTranscript] = useState<{ speaker: string; text: string; timestamp: string }[]>([]);
   const [coverage, setCoverage] = useState<Record<string, string>>({});
-  const [nbq, setNbq] = useState<any | null>(null);
-  const [nbqQueued, setNbqQueued] = useState<any | null>(null);
-  const [nbqLockedUntil, setNbqLockedUntil] = useState<number>(0);
+  type NBQItem = { id: string; question: string; checklist_category?: string; confidence?: number; source?: 'fast' | 'refine' };
+  const [nbqItems, setNbqItems] = useState<NBQItem[]>([]);
   const nbqDebounceRef = useRef<any>(null);
   const nbqInFlightRef = useRef<boolean>(false);
   const [goal, setGoal] = useState<string>("");
@@ -31,34 +30,102 @@ function CallInner() {
   const inFlightRef = useRef<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const NBQ_DEBOUNCE_MS = 2500; // 2–3s
-  const NBQ_CONF_DELTA = 0.1;   // min improvement to replace
-  const NBQ_STICKY_MS = 10000;  // 8–12s lock
+  // Seed initial NBQs so the panel isn't empty at start
+  useEffect(() => {
+    if (nbqItems.length === 0) {
+      const initSeeds = fastSeedCandidates('', cRef.current, goalRef.current, NBQ_TARGET_COUNT);
+      setNbqItems(uniqByQuestion(initSeeds));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  function considerNbqCandidate(candidate: any) {
-    const now = Date.now();
-    const current = nbq as any | null;
-    const curConf = typeof current?.confidence === "number" ? current.confidence : 0;
-    const newConf = typeof candidate?.confidence === "number" ? candidate.confidence : 0;
-    const improved = !current || (newConf - curConf) >= NBQ_CONF_DELTA;
-    if (!current) {
-      setNbq(candidate);
-      setNbqQueued(null);
-      setNbqLockedUntil(now + NBQ_STICKY_MS);
-      return;
+  // When coverage flips to "covered/complete", drop NBQs targeting that category
+  useEffect(() => {
+    setNbqItems((prev) => prev.filter((it) => !isCoveredStatus(coverage[it.checklist_category || ''])));
+  }, [coverage]);
+
+  const NBQ_DEBOUNCE_MS = 1200; // faster follow-up
+  const NBQ_TARGET_COUNT = 5;
+
+  function uniqByQuestion(items: NBQItem[]) {
+    const seen = new Set<string>();
+    const out: NBQItem[] = [];
+    for (const it of items) {
+      const key = it.question.trim().toLowerCase();
+      if (!seen.has(key)) { seen.add(key); out.push(it); }
     }
-    // If within sticky period, queue improvements silently
-    if (now < nbqLockedUntil) {
-      if (improved) {
-        setNbqQueued(candidate);
+    return out;
+  }
+
+  function isCoveredStatus(status?: string) {
+    if (!status) return false;
+    const s = status.toLowerCase();
+    return s.includes('complete') || s.includes('covered') || s.includes('done');
+  }
+
+  function fastSeedCandidates(windowText: string, cov: Record<string,string>, goalText: string, max: number): NBQItem[] {
+    const pillars: Array<{ key: string; label: string; templates: string[] }> = [
+      { key: 'business_priorities', label: 'Business Priorities', templates: [
+        'What are the top business priorities you’re focused on this quarter?',
+        'How does success get measured for you and your team?',
+      ]},
+      { key: 'challenges', label: 'Challenges', templates: [
+        'What challenges are currently blocking those priorities?',
+        'If this isn’t addressed, what will the impact be?',
+      ]},
+      { key: 'impact', label: 'Impact', templates: [
+        'What would solving this problem mean for your organization?',
+        'How are you quantifying the cost of this challenge today?',
+      ]},
+      { key: 'stakeholders', label: 'Stakeholders', templates: [
+        'Who are the key stakeholders involved in this initiative?',
+        'How do decisions like this typically get made internally?',
+      ]},
+      { key: 'tech_stack', label: 'Tech Stack', templates: [
+        'What does your current stack look like for this workflow?',
+        'Do you anticipate any integration constraints we should factor in (APIs, auth, data)?',
+      ]},
+      { key: 'timeline_budget', label: 'Timeline & Budget', templates: [
+        'Is there a target timeline or event we should work toward?',
+        'Do you have a budget range earmarked for solving this?',
+      ]},
+      { key: 'risks', label: 'Risks', templates: [
+        'What risks or unknowns would worry you about moving forward?',
+      ]},
+    ];
+    const gaps = Object.entries(cov || {}).filter(([_, v]) => !isCoveredStatus(v)).map(([k]) => k.toLowerCase());
+    const picks: NBQItem[] = [];
+    const lowerGoal = (goalText || '').toLowerCase();
+    for (const p of pillars) {
+      if (picks.length >= max) break;
+      // prioritize if pillar name or related signals appear in goal or window
+      const boost = lowerGoal.includes(p.key) || windowText.toLowerCase().includes(p.key);
+      const category = p.label;
+      if (boost || gaps.length === 0 || gaps.some(g => category.toLowerCase().includes(g))) {
+        for (const q of p.templates) {
+          if (picks.length >= max) break;
+          picks.push({ id: `fast_${p.key}_${q.length}_${Math.random().toString(36).slice(2,6)}`, question: q, checklist_category: category, confidence: 0.55, source: 'fast' });
+        }
       }
-      return;
     }
-    // Not locked; only replace if improved
-    if (improved) {
-      setNbq(candidate);
-      setNbqQueued(null);
-      setNbqLockedUntil(now + NBQ_STICKY_MS);
+    return picks.slice(0, max);
+  }
+
+  async function refineTopUp(lastUtter: string) {
+    try {
+      if (nbqInFlightRef.current) return;
+      nbqInFlightRef.current = true;
+      const need = Math.max(0, NBQ_TARGET_COUNT - nbqItems.length);
+      const res = await fetch('/api/nbq', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lastUtterance: lastUtter, checklist: cRef.current, goal: goalRef.current, count: Math.max(1, Math.min(3, need)) }) });
+      const json = await res.json();
+      const items = (json.nbqs || (json.nbq ? [json.nbq] : [])).map((it: any) => ({ ...it, source: 'refine' as const }));
+      if (items.length) {
+        setNbqItems((prev) => uniqByQuestion([...prev, ...items]).slice(0, NBQ_TARGET_COUNT));
+      }
+    } catch (e) {
+      // no-op
+    } finally {
+      nbqInFlightRef.current = false;
     }
   }
 
@@ -80,7 +147,7 @@ function CallInner() {
           setTranscript((t) => [...t, { speaker: "Customer", text: tr, timestamp: new Date().toISOString() }]);
           // Also trigger coverage/NBQ using the finalized utterance, subject to throttle
           const now = Date.now();
-          if (!inFlightRef.current && now - lastReqTsRef.current >= 1500) {
+          if (!inFlightRef.current && now - lastReqTsRef.current >= 1200) {
             inFlightRef.current = true;
             const transcriptWindow = [...tRef.current, { speaker: "Customer", text: tr, timestamp: new Date().toISOString() }]
               .slice(-40)
@@ -96,20 +163,14 @@ function CallInner() {
                     for (const c of cov.coverage) next[c.category] = c.status;
                     setCoverage(next);
                   }
-                  // Debounce NBQ refresh: wait for a quiet window post-turn
-                  if (nbqDebounceRef.current) {
-                    clearTimeout(nbqDebounceRef.current as number);
-                  }
-                  nbqDebounceRef.current = window.setTimeout(async () => {
-                    if (nbqInFlightRef.current) return;
-                    nbqInFlightRef.current = true;
-                    try {
-                      const nbqRes = await fetch("/api/nbq", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ lastUtterance: lastUtter, checklist: cRef.current, goal: goalRef.current }) }).then(r => r.json());
-                      if (nbqRes?.nbq) considerNbqCandidate(nbqRes.nbq);
-                    } finally {
-                      nbqInFlightRef.current = false;
-                    }
-                  }, NBQ_DEBOUNCE_MS);
+                  // Fast path: top-up with heuristic seeds immediately
+                  setNbqItems((prev) => {
+                    const seeds = fastSeedCandidates(transcriptWindow, cRef.current, goalRef.current, NBQ_TARGET_COUNT);
+                    return uniqByQuestion([...prev, ...seeds]).slice(0, NBQ_TARGET_COUNT);
+                  });
+                  // Debounced refine path: replace/improve items
+                  if (nbqDebounceRef.current) clearTimeout(nbqDebounceRef.current as number);
+                  nbqDebounceRef.current = window.setTimeout(() => { refineTopUp(lastUtter); }, NBQ_DEBOUNCE_MS);
                   setErrorMsg(null);
                 } catch (e: any) {
                   setErrorMsg(e?.message || "Failed to compute coverage/NBQ");
@@ -193,19 +254,22 @@ function CallInner() {
         connected={connected}
         transcript={transcript}
         coverage={coverage}
-        nbq={nbq}
-        nbqRefreshAvailable={!!nbqQueued}
-        onNbqRefreshNow={() => {
-          if (nbqQueued) {
-            considerNbqCandidate(nbqQueued);
-            setNbqQueued(null);
-          }
+        nbqItems={nbqItems}
+        onNbqActionAt={(index, action) => {
+          setNbqItems((prev) => {
+            const next = [...prev];
+            next.splice(index, 1);
+            return next;
+          });
+          // Quick top-up with a fast seed; refine will also run on next turn
+          const windowText = tRef.current.slice(-40).map(t => t.text).join(' ');
+          const seeds = fastSeedCandidates(windowText, cRef.current, goalRef.current, 1);
+          if (seeds.length) setNbqItems((prev) => uniqByQuestion([...prev, ...seeds]).slice(0, NBQ_TARGET_COUNT));
         }}
-        onNbqAction={(action) => {
-          // On accept/skip, clear current and queued, and release lock
-          setNbq(null);
-          setNbqQueued(null);
-          setNbqLockedUntil(0);
+        onNbqRefreshNow={() => {
+          // Force a refine top-up now if user wants fresher options
+          const lastUtter = tRef.current.slice(-1)[0]?.text || '';
+          refineTopUp(lastUtter);
         }}
       />
       <DebugPanel open={debugOpen} onToggle={() => setDebugOpen((v) => !v)} events={debugEvents} onClear={() => setDebugEvents([])} />

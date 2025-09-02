@@ -1,10 +1,11 @@
 "use client";
 import React, { useEffect } from "react";
 
-type Props = { nbq: any | null; onAction: (action: "accept" | "skip") => void; hasQueuedUpdate?: boolean; onRefreshNow?: () => void };
+type Props = { nbq: any | null; onAction: (action: "accept" | "skip") => void; hasQueuedUpdate?: boolean; onRefreshNow?: () => void; disableHotkeys?: boolean };
 
-export default function NBQCard({ nbq, onAction, hasQueuedUpdate, onRefreshNow }: Props) {
+export default function NBQCard({ nbq, onAction, hasQueuedUpdate, onRefreshNow, disableHotkeys }: Props) {
   useEffect(() => {
+    if (disableHotkeys) return;
     const onKey = (e: KeyboardEvent) => {
       if (!nbq) return;
       if (e.key.toLowerCase() === "n") onAction("accept");
@@ -12,7 +13,7 @@ export default function NBQCard({ nbq, onAction, hasQueuedUpdate, onRefreshNow }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [nbq, onAction]);
+  }, [nbq, onAction, disableHotkeys]);
 
   if (!nbq) return <div className="text-slate-500">Awaiting next suggestion…</div>;
   return (
@@ -33,4 +34,3 @@ export default function NBQCard({ nbq, onAction, hasQueuedUpdate, onRefreshNow }
     </div>
   );
 }
-

@@ -1,7 +1,7 @@
 "use client";
 import React, { useEffect, useMemo, useState } from "react";
 import TranscriptFeed from "./TranscriptFeed";
-import NBQCard from "./NBQCard";
+import NBQList from "./NBQList";
 import ChecklistMeter from "./ChecklistMeter";
 
 type Props = {
@@ -9,13 +9,12 @@ type Props = {
   connected: boolean;
   transcript: { speaker: string; text: string; timestamp: string }[];
   coverage: Record<string, string>;
-  nbq: any | null;
-  nbqRefreshAvailable?: boolean;
+  nbqItems: any[];
+  onNbqActionAt: (index: number, action: "accept" | "skip") => void;
   onNbqRefreshNow?: () => void;
-  onNbqAction: (action: "accept" | "skip") => void;
 };
 
-export default function Overlay({ sessionId, connected, transcript, coverage, nbq, nbqRefreshAvailable, onNbqRefreshNow, onNbqAction }: Props) {
+export default function Overlay({ sessionId, connected, transcript, coverage, nbqItems, onNbqActionAt, onNbqRefreshNow }: Props) {
   // Parent manages all state; this component renders UI only.
 
   return (
@@ -33,9 +32,9 @@ export default function Overlay({ sessionId, connected, transcript, coverage, nb
           <ChecklistMeter coverage={coverage} />
         </div>
         <div className="border rounded p-3">
-          <div className="font-semibold mb-2">Next Best Question</div>
-          <NBQCard nbq={nbq} onAction={onNbqAction} hasQueuedUpdate={!!nbqRefreshAvailable} onRefreshNow={onNbqRefreshNow} />
-          <div className="text-xs text-slate-500 mt-2">Hotkeys: N = accept, S = skip</div>
+          <div className="font-semibold mb-2">Next Best Questions (5)</div>
+          <NBQList items={nbqItems} onAction={onNbqActionAt} onRefreshNow={onNbqRefreshNow} />
+          <div className="text-xs text-slate-500 mt-2">Click Accept/Skip to manage; list auto-refreshes.</div>
         </div>
       </div>
     </div>
