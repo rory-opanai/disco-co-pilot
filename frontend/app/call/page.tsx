@@ -82,12 +82,15 @@ function CallInner() {
           const now = Date.now();
           if (!inFlightRef.current && now - lastReqTsRef.current >= 1500) {
             inFlightRef.current = true;
-            const window = [...tRef.current, { speaker: "Customer", text: tr, timestamp: new Date().toISOString() }].slice(-40).map(t => t.text).join(" ");
-            if (window) {
+            const transcriptWindow = [...tRef.current, { speaker: "Customer", text: tr, timestamp: new Date().toISOString() }]
+              .slice(-40)
+              .map(t => t.text)
+              .join(" ");
+            if (transcriptWindow) {
               (async () => {
                 try {
                   const lastUtter = tr;
-                  const cov = await fetch("/api/coverage", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ transcriptWindow: window }) }).then(r => r.json());
+                  const cov = await fetch("/api/coverage", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ transcriptWindow }) }).then(r => r.json());
                   if (Array.isArray(cov.coverage)) {
                     const next: Record<string, string> = { ...cRef.current };
                     for (const c of cov.coverage) next[c.category] = c.status;
