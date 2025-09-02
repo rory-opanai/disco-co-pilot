@@ -125,7 +125,12 @@ function CallInner() {
         }
       }
     });
-    rc.start().then(() => setConnected(true)).catch(() => setConnected(false));
+    rc.start()
+      .then(() => setConnected(true))
+      .catch((e: any) => {
+        setConnected(false);
+        setErrorMsg(e?.message || "Failed to connect to realtime API");
+      });
     return () => { rc.stop(); };
   }, [sessionId]);
 

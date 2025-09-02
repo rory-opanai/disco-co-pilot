@@ -97,6 +97,15 @@ export class RealtimeClient {
       return r;
     };
 
+    const attemptViaProxy = async (model: string) => {
+      const r = await fetch(`/api/realtime/sdp?model=${encodeURIComponent(model)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/sdp", Accept: "application/sdp" },
+        body: offer.sdp
+      });
+      return r;
+    };
+
     try {
       // First try with a fresh ephemeral token
       let { token, model } = await getEphemeral();
@@ -109,9 +118,18 @@ export class RealtimeClient {
         r = await attemptSdpPost(token, model);
       }
       if (!r.ok) {
-        const body = await r.text();
-        this.emit({ type: "realtime.sdp_error", status: r.status, body });
-        throw new Error(`Realtime SDP exchange failed: ${r.status}`);
+        const firstBody = await r.text().catch(() => "");
+        this.emit({ type: "realtime.sdp_error", stage: "ephemeral", status: r.status, body: firstBody });
+        // Fallback: try posting via server proxy with API key
+        const proxy = await attemptViaProxy(model);
+        if (!proxy.ok) {
+          const secondBody = await proxy.text().catch(() => "");
+          this.emit({ type: "realtime.sdp_error", stage: "proxy", status: proxy.status, body: secondBody });
+          throw new Error(`Realtime SDP exchange failed (ephemeral ${r.status}, proxy ${proxy.status})`);
+        }
+        const ansSdp = await proxy.text();
+        await pc.setRemoteDescription({ type: "answer", sdp: ansSdp });
+        return;
       }
       const ansSdp = await r.text();
       await pc.setRemoteDescription({ type: "answer", sdp: ansSdp });
