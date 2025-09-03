@@ -75,7 +75,7 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           {(() => {
             const mq = (summary?.missed_questions || []).slice(0, 4).map((q: any, i: number) => ({ id: `missed_${i}`, question: q.question, source: 'refine' as const }));
-            const titles = ["Open Tickets", "Avg Response Time", "Resolved Today", "High Priority"];
+            const titles = ["Open Questions", "Avg Response Time", "Resolved Today", "High Priority"];
             return titles.map((title, i) => (
               <NBQMetricCard key={title} title={title} nbq={mq[i]} />
             ));
@@ -85,7 +85,7 @@ export default function DashboardPage() {
 
       <section className="grid md:grid-cols-3 gap-4">
         <div className="md:col-span-2 border rounded p-3">
-          <div className="font-semibold mb-2">Ticket Volume</div>
+          <div className="font-semibold mb-2">Transcription</div>
           <pre className="h-96 overflow-auto whitespace-pre-wrap text-sm text-slate-800">{(transcript as string) || "No transcript yet."}</pre>
         </div>
         <div className="border rounded p-3">
@@ -118,16 +118,7 @@ export default function DashboardPage() {
       </div>
       <section>
         <h2 className="font-semibold mb-2">Discovery Depth Score</h2>
-        <div className="p-4 border rounded">
-          {summary?.discovery_depth_score ? (
-            <div>
-              <div className="text-4xl font-bold">{summary.discovery_depth_score.percentage}%</div>
-              <div className="text-slate-600">{summary.discovery_depth_score.interpretation}</div>
-            </div>
-          ) : (
-            <div className="text-slate-600">Not available</div>
-          )}
-        </div>
+        <DepthScorePanel transcript={transcript} score={summary?.discovery_depth_score} />
       </section>
       <section>
         <h2 className="font-semibold mb-2">Coverage</h2>
@@ -187,6 +178,29 @@ export default function DashboardPage() {
         <h2 className="font-semibold mb-2">Transcript</h2>
         <pre className="border rounded p-3 overflow-auto max-h-96 whitespace-pre-wrap">{(data?.transcript as string) || "No transcript yet."}</pre>
       </section>
+    </div>
+  );
+}
+
+function DepthScorePanel({ transcript, score }: { transcript?: string; score?: { percentage: number; interpretation: string } }) {
+  if (!score) return <div className="p-4 border rounded text-slate-600">Not available</div>;
+  const words = String(transcript || '').split(/\s+/).filter(Boolean).length;
+  // Cap the max score based on transcript length to avoid inflated percentages
+  // Very short calls cannot realistically achieve high depth
+  let cap = 100;
+  if (words < 40) cap = 25;
+  else if (words < 80) cap = 40;
+  else if (words < 120) cap = 50;
+  else if (words < 180) cap = 60;
+  else if (words < 260) cap = 70;
+  else if (words < 380) cap = 80;
+  const pct = Math.min(Math.round(score.percentage), cap);
+  const adjusted = pct !== Math.round(score.percentage);
+  return (
+    <div className="p-4 border rounded">
+      <div className="text-4xl font-bold">{pct}%</div>
+      <div className="text-slate-600">{score.interpretation}</div>
+      {adjusted && <div className="text-xs text-slate-500 mt-1">Adjusted for transcript length ({words} words)</div>}
     </div>
   );
 }

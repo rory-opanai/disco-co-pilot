@@ -17,7 +17,7 @@ type Props = {
 export default function Overlay({ sessionId, connected, transcript, coverage, nbqItems, onNbqActionAt, onNbqRefreshNow }: Props) {
   // Dashboard-style layout: 4 stat cards for NBQs + transcript in "Ticket Volume"
   const cards = [
-    { title: "Open Tickets", idx: 0 },
+    { title: "Open Questions", idx: 0 },
     { title: "Avg Response Time", idx: 1 },
     { title: "Resolved Today", idx: 2 },
     { title: "High Priority", idx: 3 },
@@ -40,7 +40,7 @@ export default function Overlay({ sessionId, connected, transcript, coverage, nb
       <div className="grid md:grid-cols-3 gap-4">
         <div className="md:col-span-2 border rounded p-3">
           <div className="flex items-center justify-between mb-2">
-            <div className="font-semibold">Ticket Volume</div>
+            <div className="font-semibold">Transcription</div>
             <div className={"text-xs " + (connected ? "text-green-600" : "text-red-600")}>{connected ? "Connected" : "Connecting..."}</div>
           </div>
           <TranscriptFeed items={transcript} />
