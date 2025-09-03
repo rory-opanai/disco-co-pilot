@@ -38,14 +38,14 @@ export default function Overlay({ sessionId, connected, transcript, coverage, nb
       </div>
 
       <div className="grid md:grid-cols-3 gap-4">
-        <div className="md:col-span-2 border rounded p-3">
+        <div className="md:col-span-2 card">
           <div className="flex items-center justify-between mb-2">
             <div className="font-semibold">Transcription</div>
             <div className={"text-xs " + (connected ? "text-green-600" : "text-red-600")}>{connected ? "Connected" : "Connecting..."}</div>
           </div>
           <TranscriptFeed items={transcript} />
         </div>
-        <div className="border rounded p-3">
+        <div className="card">
           <div className="font-semibold mb-2">Checklist Progress</div>
           <ChecklistMeter coverage={coverage} />
         </div>

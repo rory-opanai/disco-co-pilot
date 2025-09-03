@@ -343,7 +343,7 @@ function CallInner() {
                 setFinalizing(false);
               }
             }}
-            className={"bg-slate-800 text-white px-3 py-2 rounded flex items-center gap-2 " + (finalizing ? 'opacity-60 cursor-not-allowed' : '')}
+            className={"btn btn-primary flex items-center gap-2 " + (finalizing ? 'opacity-60 cursor-not-allowed' : '')}
           >
             {finalizing && (
               <span className="inline-block w-3 h-3 rounded-full border-2 border-white border-t-transparent animate-spin"></span>

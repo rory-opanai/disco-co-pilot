@@ -89,7 +89,7 @@ export default function DashboardPage() {
         <h2 className="font-semibold mb-2">Coverage</h2>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
           {summary?.coverage_table?.map((c: any, i: number) => (
-            <div key={i} className="border rounded p-2">
+            <div key={i} className="card p-2">
               <div className="font-medium">{c.category}</div>
               <div className="text-sm">Status: {c.status}</div>
             </div>
@@ -99,7 +99,7 @@ export default function DashboardPage() {
       <section>
         <h2 className="font-semibold mb-2">Missed Questions & Risks</h2>
         <div className="grid md:grid-cols-2 gap-4">
-          <div className="border rounded p-3">
+          <div className="card">
             <div className="font-medium mb-2">Missed Questions</div>
             <ul className="list-disc ml-5 space-y-1">
               {summary?.missed_questions?.map((q: any, i: number) => (
@@ -107,7 +107,7 @@ export default function DashboardPage() {
               )) || <div className="text-slate-500">None</div>}
             </ul>
           </div>
-          <div className="border rounded p-3">
+          <div className="card">
             <div className="font-medium mb-2">Risks & Blockers</div>
             <ul className="list-disc ml-5 space-y-1">
               {summary?.risks_and_blockers?.map((r: any, i: number) => (
@@ -127,7 +127,7 @@ export default function DashboardPage() {
       </section>
       <section>
         <h2 className="font-semibold mb-2">Draft Follow-up Email</h2>
-        <div className="border rounded p-3 space-y-2">
+        <div className="card space-y-2">
           <div className="font-medium">{summary?.follow_up_email?.subject || "No subject"}</div>
           <textarea className="w-full border rounded p-2 h-40" defaultValue={summary?.follow_up_email?.body || ""} />
           <div className="text-sm text-slate-500">Action Items: {summary?.follow_up_email?.action_items?.join(", ") || "None"}</div>
@@ -135,13 +135,13 @@ export default function DashboardPage() {
       </section>
       <section>
         <h2 className="font-semibold mb-2">Generate Summary</h2>
-        <label className="inline-block">Upload call audio
+        <label className="inline-block card p-3">Upload call audio
           <input type="file" accept="audio/*" className="block mt-1" onChange={(e) => e.target.files && upload(e.target.files[0])} />
         </label>
       </section>
       <section>
         <h2 className="font-semibold mb-2">Transcript</h2>
-        <pre className="border rounded p-3 overflow-auto max-h-96 whitespace-pre-wrap">{(data?.transcript as string) || "No transcript yet."}</pre>
+        <pre className="card overflow-auto max-h-96 whitespace-pre-wrap">{(data?.transcript as string) || "No transcript yet."}</pre>
       </section>
     </div>
   );
@@ -162,7 +162,7 @@ function DepthScorePanel({ transcript, score }: { transcript?: string; score?: {
   const pct = Math.min(Math.round(score.percentage), cap);
   const adjusted = pct !== Math.round(score.percentage);
   return (
-    <div className="p-4 border rounded">
+    <div className="card">
       <div className="text-4xl font-bold">{pct}%</div>
       <div className="text-slate-600">{score.interpretation}</div>
       {adjusted && <div className="text-xs text-slate-500 mt-1">Adjusted for transcript length ({words} words)</div>}

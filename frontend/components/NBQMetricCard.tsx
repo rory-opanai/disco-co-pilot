@@ -25,17 +25,16 @@ export default function NBQMetricCard({
         )}
       </div>
       {nbq ? (
-        <div className="space-y-3">
-          <div className="text-xl font-semibold leading-snug">{nbq.question}</div>
-          <div className="flex gap-2">
-            {onAccept && <button className="bg-green-600 text-white text-xs px-2 py-1 rounded" onClick={onAccept}>Accept</button>}
-            {onSkip && <button className="bg-slate-200 text-slate-900 text-xs px-2 py-1 rounded" onClick={onSkip}>Skip</button>}
+          <div className="space-y-3">
+            <div className="text-xl font-semibold leading-snug">{nbq.question}</div>
+            <div className="flex gap-2">
+            {onAccept && <button className="btn btn-success text-xs px-2 py-1" onClick={onAccept}>Accept</button>}
+            {onSkip && <button className="btn btn-secondary text-xs px-2 py-1" onClick={onSkip}>Skip</button>}
+            </div>
           </div>
-        </div>
       ) : (
         <div className="text-slate-500 text-sm">Awaiting suggestion…</div>
       )}
     </div>
   );
 }
-

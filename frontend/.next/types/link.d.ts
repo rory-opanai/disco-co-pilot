@@ -31,14 +31,14 @@ declare namespace __next_route_internal_types__ {
   type StaticRoutes = 
     | `/api/coverage`
     | `/api/nbq/answered`
+    | `/api/nbq`
     | `/`
     | `/api/realtime/ephemeral`
-    | `/api/nbq`
-    | `/call`
     | `/api/realtime/sdp`
+    | `/call`
   type DynamicRoutes<T extends string = string> = 
-    | `/api/postcall/${SafeSlug<T>}`
     | `/api/finalize/${SafeSlug<T>}`
+    | `/api/postcall/${SafeSlug<T>}`
     | `/dashboard/${SafeSlug<T>}`
 
   type RouteImpl<T> = 

@@ -4,3 +4,12 @@
 
 html, body, #__next { height: 100%; }
 
+/* Lightweight design tokens via utility classes */
+.card { @apply border rounded-lg bg-white shadow-sm p-4; }
+.card-muted { @apply border rounded-lg bg-slate-50; }
+.section-title { @apply text-lg font-semibold mb-2; }
+.subtle { @apply text-slate-600; }
+.btn { @apply inline-flex items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors; }
+.btn-primary { @apply bg-slate-800 text-white hover:bg-slate-700; }
+.btn-secondary { @apply bg-slate-200 text-slate-900 hover:bg-slate-300; }
+.btn-success { @apply bg-green-600 text-white hover:bg-green-700; }

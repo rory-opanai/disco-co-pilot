@@ -28,8 +28,8 @@ export default function NBQCard({ nbq, onAction, hasQueuedUpdate, onRefreshNow, 
       </div>
       <div className="text-lg">{nbq.question}</div>
       <div className="flex gap-2">
-        <button className="bg-green-600 text-white px-3 py-1 rounded" onClick={() => onAction("accept")}>Accept (N)</button>
-        <button className="bg-slate-300 text-slate-900 px-3 py-1 rounded" onClick={() => onAction("skip")}>Skip (S)</button>
+        <button className="btn btn-success" onClick={() => onAction("accept")}>Accept (N)</button>
+        <button className="btn btn-secondary" onClick={() => onAction("skip")}>Skip (S)</button>
       </div>
     </div>
   );
