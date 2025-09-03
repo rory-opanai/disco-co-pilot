@@ -37,7 +37,14 @@ export async function POST(req: Request, { params }: { params: { sessionId: stri
     });
     const transcript = res.text as string;
 
-    const sys = `You produce a structured discovery summary JSON. Follow the provided JSON schema strictly. If any section cannot be generated, set it to null and include missing_reason at root with explanation.`;
+    const sys = `You produce a structured discovery summary JSON. Follow the provided JSON schema strictly. If any section cannot be generated, set it to null and include missing_reason at root with explanation.
+
+When creating follow_up_email, ensure the body is clear, concise, and actionable. Include:
+- A brief appreciation and one-sentence recap of the conversation.
+- A section "Open questions" that lists the missed_questions (use their wording) so the recipient can answer.
+- A section "Risks or considerations" that summarizes risks_and_blockers with impact.
+- A section "Proposed next steps" that mirrors recommended_agenda (agenda_item — objective) with a scheduling CTA.
+Return plain text for the email body.`;
     const user = `Transcript (verbatim):\n${transcript}`;
     const schema = {
       type: "object",
@@ -138,6 +145,7 @@ export async function POST(req: Request, { params }: { params: { sessionId: stri
     });
     const jsonText = resp.output_text?.trim();
     const pack = jsonText ? JSON.parse(jsonText) : { coverage_table: null, missed_questions: null, risks_and_blockers: null, recommended_agenda: null, follow_up_email: null, demo_plan_suggestions: null, discovery_depth_score: null, missing_reason: "No output" };
+    pack.follow_up_email = buildFollowUpEmail(pack, transcript);
 
     await query(`INSERT INTO sessions(id, created_at, finalized_at) VALUES($1, NOW(), NOW()) ON CONFLICT (id) DO UPDATE SET finalized_at = NOW()`, [sessionId]);
     const { rows: tRows } = await query<{ id: string }>(`INSERT INTO transcripts(session_id, content) VALUES($1, $2) RETURNING id`, [sessionId, transcript]);
@@ -151,4 +159,52 @@ export async function POST(req: Request, { params }: { params: { sessionId: stri
   } catch (e: any) {
     return NextResponse.json({ error: e.message || "internal" }, { status: 500 });
   }
+}
+
+function buildFollowUpEmail(pack: any, transcript: string, goal?: string) {
+  const missed = Array.isArray(pack?.missed_questions) ? pack.missed_questions : [];
+  const risks = Array.isArray(pack?.risks_and_blockers) ? pack.risks_and_blockers : [];
+  const agenda = Array.isArray(pack?.recommended_agenda) ? pack.recommended_agenda : [];
+  const subject = pack?.follow_up_email?.subject || `Follow-up${goal ? `: ${goal}` : ''}`;
+  const lines: string[] = [];
+  lines.push("Hi,");
+  lines.push("");
+  lines.push("Thanks for the conversation — sharing notes and next steps below.");
+  if (goal) { lines.push(`Goal/Context: ${goal}`); lines.push(""); }
+  if (missed.length) {
+    lines.push("Open questions (please reply with answers):");
+    for (const q of missed) {
+      const cat = q?.expected_category ? ` (${q.expected_category})` : "";
+      lines.push(`- ${q?.question || ''}${cat}`.trim());
+    }
+    lines.push("");
+  }
+  if (risks.length) {
+    lines.push("Risks or considerations:");
+    for (const r of risks) {
+      const imp = r?.impact_level ? ` [${r.impact_level}]` : "";
+      const desc = r?.description || '';
+      lines.push(`- ${desc}${imp}`.trim());
+    }
+    lines.push("");
+  }
+  if (agenda.length) {
+    lines.push("Proposed next steps:");
+    let i = 1;
+    for (const a of agenda) {
+      const item = a?.agenda_item || 'Next step';
+      const obj = a?.objective ? ` — ${a.objective}` : '';
+      lines.push(`${i}. ${item}${obj}`.trim());
+      i += 1;
+    }
+    lines.push("");
+  }
+  lines.push("Would you be open to a 30-minute follow-up to review these and align on next steps?");
+  lines.push("");
+  lines.push("Best,\nYour Team");
+  const body = lines.join("\n");
+  const action_items: string[] = [];
+  if (missed.length) action_items.push(`Answer: ${missed.map((m: any) => m.question).join('; ')}`);
+  if (agenda.length) action_items.push(...agenda.map((a: any) => a.agenda_item).filter(Boolean));
+  return { subject, body, action_items };
 }
