@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import Overlay from "../../components/Overlay";
 import { RealtimeClient } from "../../lib/realtimeClient";
 import DebugPanel from "../../components/DebugPanel";
+import ToastList from "../../components/ToastList";
 
 function CallInner() {
   const sp = useSearchParams();
@@ -50,7 +51,7 @@ function CallInner() {
   // Debounce for refine calls; keep snappy but avoid hammering
   const NBQ_DEBOUNCE_MS = 600;
   const THROTTLE_MS = 800; // min gap between coverage/NBQ cycles
-  const NBQ_TARGET_COUNT = 5;
+  const NBQ_TARGET_COUNT = 4;
 
   function uniqByQuestion(items: NBQItem[]) {
     const seen = new Set<string>();
@@ -191,6 +192,19 @@ function CallInner() {
     }
   }
 
+  // Simple toast notifications when NBQs are auto-marked answered
+  const [toasts, setToasts] = useState<{ id: string; text: string }[]>([]);
+  const toastSeenRef = useRef<Set<string>>(new Set());
+  function pushToast(id: string, text: string) {
+    if (!toastSeenRef.current.has(id)) {
+      toastSeenRef.current.add(id);
+      const tid = `${id}_${Date.now()}`;
+      setToasts((t) => [...t, { id: tid, text }]);
+      // auto-remove in ~2.5s
+      setTimeout(() => setToasts((t) => t.filter((x) => x.id !== tid)), 2500);
+    }
+  }
+
   useEffect(() => {
     const rc = new RealtimeClient();
     rc.on(async (evt) => {
@@ -230,14 +244,21 @@ function CallInner() {
                     lastUtter,
                     ...tRef.current.slice(-3).map(t => t.text)
                   ].filter(Boolean))).slice(0, 3) as string[];
-                  // Heuristic quick filter
-                  setNbqItems((prev) => prev.filter(it => !recent.some(u => isLikelyAnswerTo(it.question, u))));
+                  // Heuristic quick filter and notifications
+                  setNbqItems((prev) => {
+                    const answered = prev.filter(it => recent.some(u => isLikelyAnswerTo(it.question, u)));
+                    for (const it of answered) pushToast(it.id, `Answered: ${it.question.slice(0, 80)}`);
+                    return prev.filter(it => !answered.includes(it));
+                  });
                   // Server check for better semantics (non-blocking)
                   try {
                     const resAns = await fetch('/api/nbq/answered', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nbqs: nbqRef.current.map(({ id, question }) => ({ id, question })), recentUtterances: recent }) });
                     const ansJson = await resAns.json();
                     const ids = Array.isArray(ansJson.answeredIds) ? new Set(ansJson.answeredIds) : new Set<string>();
-                    if (ids.size) setNbqItems((prev) => prev.filter(it => !ids.has(it.id)));
+                    if (ids.size) setNbqItems((prev) => {
+                      for (const it of prev) { if (ids.has(it.id)) pushToast(it.id, `Answered: ${it.question.slice(0, 80)}`); }
+                      return prev.filter(it => !ids.has(it.id));
+                    });
                   } catch {}
                   // Fast path: top-up with heuristic seeds immediately
                   setNbqItems((prev) => {
@@ -355,6 +376,8 @@ function CallInner() {
           refineTopUp(lastUtter);
         }}
       />
+      {/* Toast messages for answered NBQs */}
+      {toasts.length > 0 && <ToastList items={toasts} />}
       <DebugPanel open={debugOpen} onToggle={() => setDebugOpen((v) => !v)} events={debugEvents} onClear={() => setDebugEvents([])} />
     </div>
   );

@@ -1,7 +1,8 @@
 "use client";
 export const dynamic = "force-dynamic";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
+import NBQMetricCard from "../../../components/NBQMetricCard";
 
 export default function DashboardPage() {
   const { sessionId } = useParams<{ sessionId: string }>();
@@ -68,6 +69,40 @@ export default function DashboardPage() {
   const { transcript, summary } = data;
   return (
     <div className="space-y-6">
+      {/* Dashboard-style summary row */}
+      <section className="space-y-3">
+        <h2 className="text-xl font-semibold">Dashboard</h2>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {(() => {
+            const mq = (summary?.missed_questions || []).slice(0, 4).map((q: any, i: number) => ({ id: `missed_${i}`, question: q.question, source: 'refine' as const }));
+            const titles = ["Open Tickets", "Avg Response Time", "Resolved Today", "High Priority"];
+            return titles.map((title, i) => (
+              <NBQMetricCard key={title} title={title} nbq={mq[i]} />
+            ));
+          })()}
+        </div>
+      </section>
+
+      <section className="grid md:grid-cols-3 gap-4">
+        <div className="md:col-span-2 border rounded p-3">
+          <div className="font-semibold mb-2">Ticket Volume</div>
+          <pre className="h-96 overflow-auto whitespace-pre-wrap text-sm text-slate-800">{(transcript as string) || "No transcript yet."}</pre>
+        </div>
+        <div className="border rounded p-3">
+          <div className="font-semibold mb-2">Recent Tickets</div>
+          <ul className="space-y-2 text-sm">
+            {(summary?.recommended_agenda || []).slice(0, 5).map((a: any, i: number) => (
+              <li key={i} className="border rounded p-2">
+                <div className="font-medium">{a.agenda_item}</div>
+                <div className="text-slate-600">{a.objective}</div>
+              </li>
+            ))}
+            {(!summary?.recommended_agenda || summary.recommended_agenda.length === 0) && (
+              <li className="text-slate-500">No recent items</li>
+            )}
+          </ul>
+        </div>
+      </section>
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Post-Call Summary</h1>
         <button
