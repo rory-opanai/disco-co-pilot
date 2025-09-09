@@ -16,7 +16,7 @@ type Props = {
   onQueueForPauseAt?: (index: number) => void;
 };
 
-export default function Overlay({ sessionId, connected, transcript, coverage, nbqItems, goodMoment, onNbqActionAt, onNbqRefreshNow, onQueueForPauseAt }: Props) {
+export default function Overlay({ sessionId, connected, transcript, coverage, nbqItems, goodMoment, onNbqActionAt, onNbqRefreshNow }: Props) {
   // Dashboard-style layout: 4 stat cards for NBQs + transcript in "Ticket Volume"
   const cards = [
     { title: "Open Questions", idx: 0 },
@@ -38,9 +38,6 @@ export default function Overlay({ sessionId, connected, transcript, coverage, nb
             nbq={nbqItems[c.idx]}
             onAccept={nbqItems[c.idx] ? () => onNbqActionAt(c.idx, "accept") : undefined}
             onSkip={nbqItems[c.idx] ? () => onNbqActionAt(c.idx, "skip") : undefined}
-            onQueue={() => onQueueForPauseAt && onQueueForPauseAt(c.idx)}
-            bridgeQuote={lastQuote}
-            bridgeTimestamp={lastTs}
           />
         ))}
       </div>

@@ -44,6 +44,8 @@ body { @apply text-[15px] leading-relaxed; }
 .btn-ghost { @apply bg-transparent text-slate-800 hover:bg-slate-100; }
 .btn-success { background: var(--success-600); color: white; }
 .btn-success:hover { background: var(--success-700); }
+.btn-danger { background: var(--danger-600); color: white; }
+.btn-danger:hover { background: #b91c1c; }
 .bg-primary { background: var(--primary-600); }
 .text-primary { color: var(--primary-600); }
 

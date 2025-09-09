@@ -35,7 +35,6 @@ function CallInner() {
   const [finalizing, setFinalizing] = useState<boolean>(false);
   // Timing cues
   const [goodMoment, setGoodMoment] = useState<boolean>(false);
-  const queuedRef = useRef<{ idx: number | null; text: string | null }>({ idx: null, text: null });
 
   // Seed initial NBQs so the panel isn't empty at start
   useEffect(() => {
@@ -227,11 +226,6 @@ function CallInner() {
           // Surface a "good moment" cue shortly after turn end
           setGoodMoment(true);
           setTimeout(() => setGoodMoment(false), 1800);
-          // If a question was queued, prompt the user now
-          if (queuedRef.current.idx != null && queuedRef.current.text) {
-            pushToast(`queued_${Date.now()}`, `Now’s a good moment to ask: ${queuedRef.current.text.slice(0, 80)}`);
-            queuedRef.current = { idx: null, text: null };
-          }
           // Also trigger coverage/NBQ using the finalized utterance, subject to throttle
           const now = Date.now();
           if (!inFlightRef.current && now - lastReqTsRef.current >= THROTTLE_MS) {
@@ -386,13 +380,6 @@ function CallInner() {
           // Force a refine top-up now if user wants fresher options
           const lastUtter = tRef.current.slice(-1)[0]?.text || '';
           refineTopUp(lastUtter);
-        }}
-        onQueueForPauseAt={(index) => {
-          const q = nbqRef.current[index];
-          if (q) {
-            queuedRef.current = { idx: index, text: q.question };
-            pushToast(`queue_mark_${Date.now()}`, `Queued for next pause: ${q.question.slice(0, 80)}`);
-          }
         }}
       />
       {/* Toast messages for answered NBQs */}
