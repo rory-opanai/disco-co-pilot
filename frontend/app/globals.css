@@ -4,12 +4,56 @@
 
 html, body, #__next { height: 100%; }
 
-/* Lightweight design tokens via utility classes */
-.card { @apply border rounded-lg bg-white shadow-sm p-4; }
-.card-muted { @apply border rounded-lg bg-slate-50; }
+/* Design tokens via CSS variables */
+:root {
+  --bg-canvas: #f8fafc; /* slate-50 */
+  --surface: #ffffff;
+  --border: #e5e7eb; /* slate-200 */
+  --text-muted: #64748b; /* slate-500 */
+  --primary-50: #eef2ff; /* indigo-50 */
+  --primary-100: #e0e7ff;
+  --primary-600: #4f46e5; /* indigo-600 */
+  --primary-700: #4338ca;
+  --success-50: #ecfdf5; /* emerald-50 */
+  --success-100: #d1fae5;
+  --success-600: #16a34a;
+  --success-700: #15803d;
+  --warning-50: #fffbeb; /* amber-50 */
+  --warning-100: #fef3c7;
+  --warning-600: #f59e0b;
+  --danger-50: #fef2f2; /* red-50 */
+  --danger-100: #fee2e2;
+  --danger-600: #dc2626;
+}
+
+/* Type scale */
+h1 { @apply text-[28px] md:text-[32px] leading-snug font-semibold; }
+h2 { @apply text-[22px] md:text-[24px] leading-snug font-semibold; }
+body { @apply text-[15px] leading-relaxed; }
+
+/* Utility components */
+.card { @apply border rounded-xl bg-[color:var(--surface)] shadow-card p-4 border-[color:var(--border)]; }
+.card-muted { @apply border rounded-xl bg-slate-50; }
 .section-title { @apply text-lg font-semibold mb-2; }
-.subtle { @apply text-slate-600; }
-.btn { @apply inline-flex items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors; }
-.btn-primary { @apply bg-slate-800 text-white hover:bg-slate-700; }
-.btn-secondary { @apply bg-slate-200 text-slate-900 hover:bg-slate-300; }
-.btn-success { @apply bg-green-600 text-white hover:bg-green-700; }
+.subtle { color: var(--text-muted); }
+
+.btn { @apply inline-flex items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2; }
+.btn-primary { background: var(--primary-600); color: white; }
+.btn-primary:hover { background: var(--primary-700); }
+.btn-secondary { @apply bg-slate-100 text-slate-900 hover:bg-slate-200; }
+.btn-ghost { @apply bg-transparent text-slate-800 hover:bg-slate-100; }
+.btn-success { background: var(--success-600); color: white; }
+.btn-success:hover { background: var(--success-700); }
+.bg-primary { background: var(--primary-600); }
+.text-primary { color: var(--primary-600); }
+
+.badge { @apply inline-flex items-center text-[10px] font-medium px-1.5 py-0.5 rounded-full; }
+.badge-soft-primary { background: var(--primary-100); color: var(--primary-600); }
+.badge-soft-success { background: var(--success-100); color: var(--success-600); }
+.badge-soft-warning { background: var(--warning-100); color: var(--warning-600); }
+.badge-soft-danger { background: var(--danger-100); color: var(--danger-600); }
+
+.chip { @apply inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-slate-100 text-slate-700; }
+
+/* Focus ring for interactive elements */
+button, a, input, textarea { @apply focus-visible:ring-[color:var(--primary-600)] focus-visible:ring-offset-[color:var(--surface)]; }

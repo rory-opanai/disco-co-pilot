@@ -1,13 +1,13 @@
 {
   "/_not-found/page": "app/_not-found/page.js",
+  "/api/finalize/[sessionId]/route": "app/api/finalize/[sessionId]/route.js",
   "/api/nbq/answered/route": "app/api/nbq/answered/route.js",
   "/api/nbq/route": "app/api/nbq/route.js",
-  "/api/coverage/route": "app/api/coverage/route.js",
-  "/api/finalize/[sessionId]/route": "app/api/finalize/[sessionId]/route.js",
   "/api/realtime/ephemeral/route": "app/api/realtime/ephemeral/route.js",
+  "/api/coverage/route": "app/api/coverage/route.js",
+  "/page": "app/page.js",
   "/api/realtime/sdp/route": "app/api/realtime/sdp/route.js",
   "/api/postcall/[sessionId]/route": "app/api/postcall/[sessionId]/route.js",
-  "/page": "app/page.js",
   "/dashboard/[sessionId]/page": "app/dashboard/[sessionId]/page.js",
   "/call/page": "app/call/page.js"
 }

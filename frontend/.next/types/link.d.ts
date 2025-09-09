@@ -31,10 +31,10 @@ declare namespace __next_route_internal_types__ {
   type StaticRoutes = 
     | `/api/nbq/answered`
     | `/api/nbq`
-    | `/api/coverage`
     | `/api/realtime/ephemeral`
-    | `/api/realtime/sdp`
+    | `/api/coverage`
     | `/`
+    | `/api/realtime/sdp`
     | `/call`
   type DynamicRoutes<T extends string = string> = 
     | `/api/finalize/${SafeSlug<T>}`

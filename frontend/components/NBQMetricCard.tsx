@@ -50,7 +50,7 @@ export default function NBQMetricCard({
       <div className="text-slate-600 text-sm mb-2 flex items-center justify-between">
         <div className="font-medium">{title}</div>
         {nbq?.source && (
-          <span className={"text-[10px] px-1.5 py-0.5 rounded " + (nbq.source === 'fast' ? 'bg-sky-100 text-sky-700' : 'bg-emerald-100 text-emerald-700')}>
+          <span className={"badge " + (nbq.source === 'fast' ? 'badge-soft-primary' : 'badge-soft-success')}>
             {nbq.source === 'fast' ? 'Fast' : 'Refined'}
           </span>
         )}

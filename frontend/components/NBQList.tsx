@@ -25,9 +25,9 @@ export default function NBQList({ items, onAction, onRefreshNow }: Props) {
           <div className="flex items-center justify-between mb-1 text-xs text-slate-600">
             <div>
               {it.source === "fast" ? (
-                <span className="px-1.5 py-0.5 rounded bg-sky-100 text-sky-700 mr-2">Fast</span>
+                <span className="badge badge-soft-primary mr-2">Fast</span>
               ) : (
-                <span className="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 mr-2">Refined</span>
+                <span className="badge badge-soft-success mr-2">Refined</span>
               )}
               <span>Category: {it.checklist_category || "General"}</span>
             </div>
@@ -42,4 +42,3 @@ export default function NBQList({ items, onAction, onRefreshNow }: Props) {
     </div>
   );
 }
-
