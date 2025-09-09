@@ -14,7 +14,7 @@ function CallInner() {
   const [connected, setConnected] = useState(false);
   const [transcript, setTranscript] = useState<{ speaker: string; text: string; timestamp: string }[]>([]);
   const [coverage, setCoverage] = useState<Record<string, string>>({});
-  type NBQItem = { id: string; question: string; checklist_category?: string; confidence?: number; source?: 'fast' | 'refine' };
+  type NBQItem = { id: string; question: string; grounded_in?: string; checklist_category?: string; confidence?: number; source?: 'fast' | 'refine' };
   const [nbqItems, setNbqItems] = useState<NBQItem[]>([]);
   const nbqRef = useRef<NBQItem[]>([]);
   useEffect(() => { nbqRef.current = nbqItems; }, [nbqItems]);
@@ -33,6 +33,9 @@ function CallInner() {
   const inFlightRef = useRef<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [finalizing, setFinalizing] = useState<boolean>(false);
+  // Timing cues
+  const [goodMoment, setGoodMoment] = useState<boolean>(false);
+  const queuedRef = useRef<{ idx: number | null; text: string | null }>({ idx: null, text: null });
 
   // Seed initial NBQs so the panel isn't empty at start
   useEffect(() => {
@@ -167,7 +170,7 @@ function CallInner() {
       if (boost || gaps.length === 0 || gaps.some(g => category.toLowerCase().includes(g))) {
         for (const q of p.templates) {
           if (picks.length >= max) break;
-          picks.push({ id: `fast_${p.key}_${q.length}_${Math.random().toString(36).slice(2,6)}`, question: q, checklist_category: category, confidence: 0.55, source: 'fast' });
+          picks.push({ id: `fast_${p.key}_${q.length}_${Math.random().toString(36).slice(2,6)}`, question: q, grounded_in: 'playbook_templates', checklist_category: category, confidence: 0.55, source: 'fast' });
         }
       }
     }
@@ -221,6 +224,14 @@ function CallInner() {
         const tr = (evt.transcript || "").trim();
         if (tr) {
           setTranscript((t) => [...t, { speaker: "Customer", text: tr, timestamp: new Date().toISOString() }]);
+          // Surface a "good moment" cue shortly after turn end
+          setGoodMoment(true);
+          setTimeout(() => setGoodMoment(false), 1800);
+          // If a question was queued, prompt the user now
+          if (queuedRef.current.idx != null && queuedRef.current.text) {
+            pushToast(`queued_${Date.now()}`, `Now’s a good moment to ask: ${queuedRef.current.text.slice(0, 80)}`);
+            queuedRef.current = { idx: null, text: null };
+          }
           // Also trigger coverage/NBQ using the finalized utterance, subject to throttle
           const now = Date.now();
           if (!inFlightRef.current && now - lastReqTsRef.current >= THROTTLE_MS) {
@@ -359,6 +370,7 @@ function CallInner() {
         transcript={transcript}
         coverage={coverage}
         nbqItems={nbqItems}
+        goodMoment={goodMoment}
         onNbqActionAt={(index, action) => {
           setNbqItems((prev) => {
             const next = [...prev];
@@ -374,6 +386,13 @@ function CallInner() {
           // Force a refine top-up now if user wants fresher options
           const lastUtter = tRef.current.slice(-1)[0]?.text || '';
           refineTopUp(lastUtter);
+        }}
+        onQueueForPauseAt={(index) => {
+          const q = nbqRef.current[index];
+          if (q) {
+            queuedRef.current = { idx: index, text: q.question };
+            pushToast(`queue_mark_${Date.now()}`, `Queued for next pause: ${q.question.slice(0, 80)}`);
+          }
         }}
       />
       {/* Toast messages for answered NBQs */}

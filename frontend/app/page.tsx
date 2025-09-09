@@ -19,7 +19,8 @@ export default function HomePage() {
           <div>
             <h1 className="text-3xl font-bold">Discovery Co-Pilot</h1>
             <p className="subtle mt-2 max-w-2xl">
-              Run better discovery calls with real-time next best questions, checklist coverage, and a post-call summary with follow-up email. Click start to begin — we’ll create a unique session ID for you.
+              Run better discovery calls with real-time next best questions, checklist coverage, and a post-call summary with follow-up email.
+              Co‑Pilot now includes rephrase controls, bridge phrases using the customer’s own words, timing cues, and a short rationale for each suggestion — so prompts feel natural, not prescriptive.
             </p>
             <div className="mt-4 flex gap-2">
               <button onClick={start} className="btn btn-primary">Start Call</button>
@@ -40,7 +41,7 @@ export default function HomePage() {
           </div>
           <div className="card">
             <div className="text-sm font-medium mb-1">2. Get live guidance</div>
-            <div className="subtle">You’ll see four Next Best Questions and a checklist progress meter.</div>
+            <div className="subtle">You’ll see four Next Best Questions, bridge phrases quoting the customer, and a checklist progress meter.</div>
           </div>
           <div className="card">
             <div className="text-sm font-medium mb-1">3. Save the summary</div>
@@ -60,6 +61,14 @@ export default function HomePage() {
           <li className="card">
             <div className="font-medium mb-1">Privacy</div>
             <div className="subtle">If the database is unavailable, summaries cache locally to render your dashboard.</div>
+          </li>
+          <li className="card">
+            <div className="font-medium mb-1">Make it sound natural</div>
+            <div className="subtle">Per-question controls let you pick a tone (Consultative, Curious, Executive, Casual), rephrase (Soften, Shorten, Open‑ended, Empathetic), and add bridge phrases.</div>
+          </li>
+          <li className="card">
+            <div className="font-medium mb-1">Timing cues</div>
+            <div className="subtle">Queue any NBQ for the next pause; watch for the “Now’s a good moment” indicator after the customer finishes speaking.</div>
           </li>
         </ul>
       </section>

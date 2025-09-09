@@ -10,11 +10,13 @@ type Props = {
   transcript: { speaker: string; text: string; timestamp: string }[];
   coverage: Record<string, string>;
   nbqItems: any[];
+  goodMoment?: boolean;
   onNbqActionAt: (index: number, action: "accept" | "skip") => void;
   onNbqRefreshNow?: () => void;
+  onQueueForPauseAt?: (index: number) => void;
 };
 
-export default function Overlay({ sessionId, connected, transcript, coverage, nbqItems, onNbqActionAt, onNbqRefreshNow }: Props) {
+export default function Overlay({ sessionId, connected, transcript, coverage, nbqItems, goodMoment, onNbqActionAt, onNbqRefreshNow, onQueueForPauseAt }: Props) {
   // Dashboard-style layout: 4 stat cards for NBQs + transcript in "Ticket Volume"
   const cards = [
     { title: "Open Questions", idx: 0 },
@@ -22,6 +24,9 @@ export default function Overlay({ sessionId, connected, transcript, coverage, nb
     { title: "Resolved Today", idx: 2 },
     { title: "High Priority", idx: 3 },
   ];
+  const lastCustomer = [...transcript].reverse().find((t) => t.speaker === 'Customer');
+  const lastQuote = lastCustomer?.text || '';
+  const lastTs = lastCustomer?.timestamp || '';
 
   return (
     <div className="space-y-4">
@@ -33,6 +38,9 @@ export default function Overlay({ sessionId, connected, transcript, coverage, nb
             nbq={nbqItems[c.idx]}
             onAccept={nbqItems[c.idx] ? () => onNbqActionAt(c.idx, "accept") : undefined}
             onSkip={nbqItems[c.idx] ? () => onNbqActionAt(c.idx, "skip") : undefined}
+            onQueue={() => onQueueForPauseAt && onQueueForPauseAt(c.idx)}
+            bridgeQuote={lastQuote}
+            bridgeTimestamp={lastTs}
           />
         ))}
       </div>
@@ -41,7 +49,13 @@ export default function Overlay({ sessionId, connected, transcript, coverage, nb
         <div className="md:col-span-2 card">
           <div className="flex items-center justify-between mb-2">
             <div className="font-semibold">Transcription</div>
-            <div className={"text-xs " + (connected ? "text-green-600" : "text-red-600")}>{connected ? "Connected" : "Connecting..."}</div>
+            <div className="text-xs flex items-center gap-2">
+              {goodMoment ? (
+                <span className="text-emerald-700 bg-emerald-100 rounded px-2 py-0.5">Now’s a good moment</span>
+              ) : (
+                <span className={connected ? "text-green-600" : "text-red-600"}>{connected ? "Listening…" : "Connecting..."}</span>
+              )}
+            </div>
           </div>
           <TranscriptFeed items={transcript} />
         </div>
