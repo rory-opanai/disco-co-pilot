@@ -1,40 +1,6 @@
 "use client";
 import React from "react";
 
-type Props = {
-  title: string;
-  nbq?: { question: string; checklist_category?: string; confidence?: number } | null;
-  onAccept?: () => void;
-  onSkip?: () => void;
-};
-
-export default function NBQMetricCard({ title, nbq, onAccept, onSkip }: Props) {
-  const conf = typeof nbq?.confidence === "number" ? Math.round(nbq!.confidence * 100) : null;
-  return (
-    <div className="card h-full flex flex-col">
-      <div className="text-xs text-slate-500 mb-1">{title}</div>
-      {nbq ? (
-        <>
-          <div className="text-sm text-slate-600 mb-1">{nbq.checklist_category || "General"}</div>
-          <div className="text-base font-medium leading-snug flex-1">{nbq.question}</div>
-          <div className="mt-3 flex items-center justify-between">
-            <div className="text-xs text-slate-500">{conf !== null ? `Confidence ${conf}%` : ""}</div>
-            <div className="flex gap-1">
-              {onSkip && <button className="btn btn-secondary" onClick={onSkip}>Skip</button>}
-              {onAccept && <button className="btn btn-success" onClick={onAccept}>Ask</button>}
-            </div>
-          </div>
-        </>
-      ) : (
-        <div className="text-slate-500">Awaiting suggestion…</div>
-      )}
-    </div>
-  );
-}
-
-"use client";
-import React from "react";
-
 type NBQ = { id: string; question: string; grounded_in?: string; checklist_category?: string; confidence?: number; source?: "fast" | "refine" };
 
 export default function NBQMetricCard({
