@@ -1,6 +1,22 @@
 "use client";
 import React from "react";
 
+export default function ToastList({ items }: { items: { id: string; text: string }[] }) {
+  if (!items?.length) return null;
+  return (
+    <div className="fixed right-3 top-14 z-40 space-y-2">
+      {items.map((t) => (
+        <div key={t.id} className="card shadow-overlay bg-white/95">
+          <div className="text-sm">{t.text}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+"use client";
+import React from "react";
+
 type Toast = { id: string; text: string };
 
 export default function ToastList({ items, onClose }: { items: Toast[]; onClose?: (id: string) => void }) {

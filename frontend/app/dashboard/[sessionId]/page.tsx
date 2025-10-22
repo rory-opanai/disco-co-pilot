@@ -75,7 +75,7 @@ export default function DashboardPage() {
             const newId = `sess_${Date.now()}`;
             router.push(`/call?sessionId=${newId}`);
           }}
-          className="bg-slate-800 text-white px-3 py-2 rounded"
+          className="btn btn-primary"
           aria-label="Start a new call session"
         >
           Start New
